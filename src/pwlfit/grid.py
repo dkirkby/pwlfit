@@ -1,14 +1,15 @@
 from typing import Callable
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 
 class Grid:
     """A class to represent a grid for piecewise linear fitting."""
 
-    def __init__(self, x_data: np.ndarray, n_grid: int,
+    def __init__(self, x_data: ArrayLike, n_grid: int,
                  transform: Callable[[float], float] = lambda x: x,
-                 inverse: Callable[[float], float] = lambda x: x):
+                 inverse: Callable[[float], float] = lambda x: x) -> None:
         """
         Initialize the grid of possible breakpoints for piecewise linear fitting.
 
@@ -20,10 +21,11 @@ class Grid:
         inverse (callable): Inverse of the transform to map back to x_data space.
             Default is identity.
         Raises ValueError if:
+         - n_grid < 2
          - x_data is not strictly increasing
          - transformed x_data is not strictly increasing
-         - n_grid < 2
          - transform and inverse are not consistent with each other
+         - there is not at least one data point between grid points
         """
         if not np.all(np.diff(x_data) > 0):
             raise ValueError("x_data must be strictly increasing.")
@@ -41,3 +43,5 @@ class Grid:
         # Tabulate how x_grid and x_data are interleaved.
         self.breaks = np.searchsorted(self.x_data, self.x_grid)
         self.breaks[-1] += 1
+        if not np.all(np.diff(self.breaks) > 0):
+            raise ValueError("Must be at least one data point between grid points.")

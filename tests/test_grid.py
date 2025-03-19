@@ -17,13 +17,13 @@ class TestGrid(unittest.TestCase):
             self.assertTrue(np.all(grid.x_data[k1:k2] <= grid.x_grid[i + 1]))
 
     def test_equal(self):
-        x_data = np.linspace(0, 10, 100)
-        grid = Grid(x_data, n_grid=100)
+        x_data = np.linspace(0, 10, 101)
+        grid = Grid(x_data, n_grid=101)
         self.verify_breaks(grid)
 
     def test_uniform_dense(self):
-        x_data = np.linspace(0, 10, 1000)
-        grid = Grid(x_data, n_grid=100)
+        x_data = np.linspace(0, 10, 1001)
+        grid = Grid(x_data, n_grid=101)
         self.verify_breaks(grid)
 
     def test_nonuniform_dense(self):
@@ -34,8 +34,12 @@ class TestGrid(unittest.TestCase):
         self.verify_breaks(grid)
 
     def test_uniform_sparse(self):
-        x_data = np.linspace(0, 10, 10)
-        grid = Grid(x_data, n_grid=25)
+        x_data = np.linspace(0, 10, 11)
+        self.assertRaises(ValueError, Grid, x_data, n_grid=25)
+
+    def test_log_transform(self):
+        x_data = np.linspace(1, 10, 101)
+        grid = Grid(x_data, n_grid=25, transform=np.log, inverse=np.exp)
         self.verify_breaks(grid)
 
 
