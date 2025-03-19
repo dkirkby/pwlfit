@@ -16,8 +16,8 @@ class TestGenerateData(unittest.TestCase):
         data = generate_data(ndata, ngrid, nknots)
 
         # Check the shapes of the returned data
-        self.assertEqual(data.x_data.shape, (ndata,))
-        self.assertEqual(data.y_data.shape, (ndata,))
+        self.assertEqual(data.xdata.shape, (ndata,))
+        self.assertEqual(data.ydata.shape, (ndata,))
         self.assertEqual(data.ivar.shape, (ndata,))
         self.assertEqual(data.iknots.shape, (nknots,))
         self.assertIsInstance(data.grid, Grid)

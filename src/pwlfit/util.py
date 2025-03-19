@@ -6,8 +6,8 @@ import pwlfit.grid
 
 
 class GeneratedData(NamedTuple):
-    x_data: np.ndarray
-    y_data: np.ndarray
+    xdata: np.ndarray
+    ydata: np.ndarray
     ivar: np.ndarray
     iknots: np.ndarray
     xknots: np.ndarray
@@ -25,8 +25,8 @@ def generate_data(ndata: int, ngrid: int, nknots: int,
     rng = np.random.default_rng(seed)
 
     # Generate the grid to use
-    x_data = np.linspace(xlo, xhi, ndata)
-    grid = pwlfit.grid.Grid(x_data, ngrid)
+    xdata = np.linspace(xlo, xhi, ndata)
+    grid = pwlfit.grid.Grid(xdata, ngrid)
 
     # Pick a random subset of interior grid points to be knots
     iknots = rng.choice(np.arange(1, ngrid - 1), nknots - 2, replace=False)
@@ -34,16 +34,16 @@ def generate_data(ndata: int, ngrid: int, nknots: int,
     iknots = np.insert(iknots, 0, 0)
     iknots = np.append(iknots, ngrid - 1)
 
-    xknots = grid.x_grid[iknots]
+    xknots = grid.xgrid[iknots]
     yknots = rng.uniform(ylo, yhi, nknots)
-    y_data = np.interp(x_data, xknots, yknots) + rng.normal(0, noise, ndata)
+    ydata = np.interp(xdata, xknots, yknots) + rng.normal(0, noise, ndata)
     ivar = np.full(ndata, noise ** -2)
 
     if missing_frac > 0:
         nmissing = int(ndata * missing_frac)
         missing_indices = rng.choice(np.arange(ndata), nmissing, replace=False)
-        y_data[missing_indices] = np.nan
+        ydata[missing_indices] = np.nan
         ivar[missing_indices] = 0
 
-    return GeneratedData(x_data=x_data, y_data=y_data, ivar=ivar,
+    return GeneratedData(xdata=xdata, ydata=ydata, ivar=ivar,
                          iknots=iknots, xknots=xknots, yknots=yknots, grid=grid)
