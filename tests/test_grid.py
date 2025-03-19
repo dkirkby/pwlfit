@@ -7,16 +7,36 @@ from pwlfit.grid import Grid
 
 class TestGrid(unittest.TestCase):
 
-    def setUp(self):
-        # Create a simple grid for testing
+    def verify_breaks(self, grid):
+        # Check that the breaks are in increasing order
+        self.assertTrue(np.all(np.diff(grid.breaks) >= 0))
+        # Check that the breaks are consistent with the x_data and x_grid
+        for i in range(grid.n_grid - 1):
+            k1, k2 = grid.breaks[i], grid.breaks[i + 1]
+            self.assertTrue(np.all(grid.x_data[k1:k2] >= grid.x_grid[i]))
+            self.assertTrue(np.all(grid.x_data[k1:k2] <= grid.x_grid[i + 1]))
+
+    def test_equal(self):
+        x_data = np.linspace(0, 10, 100)
+        grid = Grid(x_data, n_grid=100)
+        self.verify_breaks(grid)
+
+    def test_uniform_dense(self):
+        x_data = np.linspace(0, 10, 1000)
+        grid = Grid(x_data, n_grid=100)
+        self.verify_breaks(grid)
+
+    def test_nonuniform_dense(self):
         rng = np.random.default_rng(42)
         x_data = rng.uniform(0, 10, 1000)
         x_data.sort()
-        self.grid = Grid(x_data, n_points=100)
+        grid = Grid(x_data, n_grid=100)
+        self.verify_breaks(grid)
 
-    def test_initialization(self):
-        # Test if the grid is initialized correctly
-        self.assertEqual(len(self.grid.x_grid), 100)
+    def test_uniform_sparse(self):
+        x_data = np.linspace(0, 10, 10)
+        grid = Grid(x_data, n_grid=25)
+        self.verify_breaks(grid)
 
 
 if __name__ == "__main__":
