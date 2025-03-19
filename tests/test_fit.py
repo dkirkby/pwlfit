@@ -2,8 +2,17 @@ import unittest
 
 import numpy as np
 
-from pwlfit.fit import fitFixedKnotsContinuous
+from pwlfit.fit import fitFixedKnotsContinuous, fitPrunedKnotsDiscontinuous
 from pwlfit.util import generate_data
+
+
+class TestPrunedKnotsDiscontinuous(unittest.TestCase):
+
+    def testContinuous(self):
+        D = generate_data(ndata=1000, ngrid=50, nknots=10, noise=0.05, missing_frac=0.05)
+        # Fit using all possible knots and verify that they are pruned to the correct subset
+        fit = fitPrunedKnotsDiscontinuous(D.ydata, D.ivar, np.arange(D.grid.ngrid), D.grid, mu=2)
+        self.assertTrue(np.array_equal(D.iknots, fit.iknots))
 
 
 class TestFixedKnotsContinuous(unittest.TestCase):

@@ -101,7 +101,7 @@ def segmentFit(i1: int, i2: int, cumSums: CummulativeSums, eps: float = 1e-10) -
 
 
 def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike,
-                                grid: pwlfit.grid.Grid, mu: float = 1,
+                                grid: pwlfit.grid.Grid, mu: float = 2,
                                 fit: bool = False) -> FitResult:
     """
     Fit a discontinuous piecewise linear function to noisy data with pruned knots.
@@ -113,7 +113,7 @@ def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike
     ivar (np.ndarray): The inverse variance of the data (1/sigma^2).
     iknots (np.ndarray): The indices of the knots in the grid.
     grid (Grid): The grid object containing the xdata and sdata.
-    mu (float): A penalty term for the number of knots. Default is 1.
+    mu (float): A penalty term for the number of knots. Larger values will favor fewer knots.
     fit (bool): If True, return the fitted values and chi-squared for each data point.
         Default is False.
 
