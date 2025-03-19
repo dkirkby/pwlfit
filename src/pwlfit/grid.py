@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from typing import Callable
 
 import numpy as np
 
@@ -29,14 +29,13 @@ class Grid:
             raise ValueError("x_data must be strictly increasing.")
         if n_points < 2:
             raise ValueError("n_points must be at least 2.")
-        self.n_points = n_points
         self.x_data = x_data
         self.s_data = transform(x_data)
         if not np.all(np.diff(self.s_data) > 0):
             raise ValueError("Transformed x_data must be strictly increasing.")
         if not np.allclose(inverse(self.s_data), self.x_data):
             raise ValueError("Transform and inverse must be consistent.")
-        self.s_grid = np.linspace(s_data[0], s_data[-1], n_points)
+        self.s_grid = np.linspace(self.s_data[0], self.s_data[-1], n_points)
         self.x_grid = inverse(self.s_grid)
         # Tabulate how x_grid and x_data are interleaved.
         self.breaks = np.searchsorted(self.x_data, self.x_grid)
