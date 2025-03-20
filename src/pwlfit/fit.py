@@ -220,14 +220,15 @@ def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, y
     E = np.full((n, n), np.inf)
     for i1 in range(n):
         slo = grid.sgrid[iknots[i1]]
-        k1 = breaks[iknots[i1]]
+        k1 = grid.breaks[iknots[i1]]
         for i2 in range(i1 + 1, n):
             shi = grid.sgrid[iknots[i2]]
-            k2 = breaks[iknots[i2]]
+            k2 = grid.breaks[iknots[i2]]
             t = (grid.sdata[k1:k2] - slo) / (shi - slo)
             linear = yknots[i1] * (1 - t) + yknots[i2] * t
-            chisq = ivar[k1:k2] * (flux[k1:k2] - linear) ** 2
-            chisq[ivar[k1:k2] == 0] = 0  # Ignore any y=NaN values when ivar==0
+            wgt = ivar[k1:k2]
+            chisq = wgt * (y[k1:k2] - linear) ** 2
+            chisq[wgt == 0] = 0  # Ignore any y=NaN values when ivar==0
             E[i1, i2] = np.sum(chisq)
 
     # Dynamic programming to find the best subset of iknots to use.
@@ -255,11 +256,12 @@ def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, y
     xknots = grid.xgrid[iknots[pruned]]
     y1knots = yknots[pruned[:-1]]
     y2knots = yknots[pruned[1:]]
+    yknots = yknots[pruned]
 
     xfit, yfit, chisq = None, None, None
 
     return FitResult(iknots=pruned, xknots=xknots,
-                     yknots=None, y1knots=y1knots, y2knots=y2knots,
+                     yknots=yknots, y1knots=y1knots, y2knots=y2knots,
                      xfit=xfit, yfit=yfit, chisq=chisq)
 
 
