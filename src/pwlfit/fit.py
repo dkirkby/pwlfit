@@ -6,6 +6,37 @@ from numpy.typing import ArrayLike
 import pwlfit.grid
 
 class FitResult(NamedTuple):
+    """A named tuple to hold the results of the piecewise linear fit.
+
+    The fields are:
+    - iknots: The indices of the knots in a grid that define the piecewise segments.
+    - xknots: The x values corresponding to the knots.
+    - yknots: The y values at the knots (None for discontinuous fits).
+    - y1knots: The fitted values at the left side of each segment.
+    - y2knots: The fitted values at the right side of each segment.
+    - xfit: The x values corresponding to the fitted data (if fit=True).
+    - yfit: The fitted y values (if fit=True).
+    - chisq: The chi-squared values for each data point (if fit=True).
+
+    The number of segments is len(iknots) - 1. All arrays above have length len(iknots),
+    except for y1knots and y2knots which have length len(iknots) - 1.
+
+    The xfit, yfit, and chisq arrays are only populated when `fit=True` is passed to one
+    of the fitting functions below.
+
+    A continuous piecewise fit has y1knots[i] = yknots[i] and y2knots[i] = yknots[i+1] for all i.
+    A discontinuous piecewise fit has yknots set to None, and y1knots and y2knots
+    represent the fitted values at the left and right side of each segment respectively.
+
+    To plot a continuous piecewise fit, use:
+
+    >>> plt.plot(xknots, yknots, 'o-')
+
+    To plot a discontinuous piecewise fit, use:
+
+    >>> for i in range(len(y1knots)):
+    >>>     plt.plot([xknots[i], xknots[i+1]], [y1knots[i], y2knots[i]], 'o-')
+    """
     iknots: np.ndarray
     xknots: np.ndarray
     yknots: np.ndarray
@@ -119,16 +150,6 @@ def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike
 
     Returns:
     FitResult
-    -----------
-    A named tuple containing the results of the fit. The fields are:
-    - iknots: The indices of the knots.
-    - xknots: The x values corresponding to the knots.
-    - yknots: Set to None for discontinuous fits.
-    - y1knots: The fitted values at the left side of each segment.
-    - y2knots: The fitted values at the right side of each segment.
-    - xfit: The x values corresponding to the fitted data (if fit=True).
-    - yfit: The fitted y values (if fit=True).
-    - chisq: The chi-squared values for each data point (if fit=True).
     """
     cumSums = calculateCumulativeSums(y, ivar, iknots, grid)
 
@@ -153,6 +174,7 @@ def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike
         pruned.append(iknots[j])
         j = backptr[j]
     pruned.reverse()
+    pruned = np.array(pruned)
 
     xknots = grid.xgrid[pruned]
     y1knots = np.zeros(len(pruned) - 1)
@@ -161,6 +183,78 @@ def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike
         sfit = segmentFit(pruned[j], pruned[j + 1], cumSums)
         y1knots[j] = sfit.a + sfit.b * xknots[j]
         y2knots[j] = sfit.a + sfit.b * xknots[j + 1]
+
+    xfit, yfit, chisq = None, None, None
+
+    return FitResult(iknots=pruned, xknots=xknots,
+                     yknots=None, y1knots=y1knots, y2knots=y2knots,
+                     xfit=xfit, yfit=yfit, chisq=chisq)
+
+
+def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, yknots: ArrayLike,
+                             grid: pwlfit.grid.Grid, mu: float = 2, fit: bool = False) -> FitResult:
+    """
+    Fit a continuous piecewise linear function to noisy data with pruned knots.
+    Since the y values to use at each knot are provided, the linear segment between
+    any two knots is already defined and there are no free parameters to fit.
+    Instead, this function performs an optimization to determine the best pruned
+    subset of the input iknots to use.
+
+    Parameters:
+    y (np.ndarray): The y values of the data to fit. Ignored when corresponding ivar=0.
+    ivar (np.ndarray): The inverse variance of the data (1/sigma^2).
+    iknots (np.ndarray): The indices of the knots in the grid.
+    yknots (np.ndarray): The y values at the knots to use for the fit.
+    grid (Grid): The grid object containing the xdata and sdata.
+    mu (float): A penalty term for the number of knots. Larger values will favor fewer knots.
+    fit (bool): If True, return the fitted values and chi-squared for each data point.
+        Default is False.
+
+    Returns:
+    FitResult
+    """
+    n = len(iknots)
+    ndata = grid.breaks[iknots[-1]] - grid.breaks[iknots[0]]
+
+    # Precompute the error matrix E[i1,i2] for i1 < i2
+    E = np.full((n, n), np.inf)
+    for i1 in range(n):
+        slo = grid.sgrid[iknots[i1]]
+        k1 = breaks[iknots[i1]]
+        for i2 in range(i1 + 1, n):
+            shi = grid.sgrid[iknots[i2]]
+            k2 = breaks[iknots[i2]]
+            t = (grid.sdata[k1:k2] - slo) / (shi - slo)
+            linear = yknots[i1] * (1 - t) + yknots[i2] * t
+            chisq = ivar[k1:k2] * (flux[k1:k2] - linear) ** 2
+            chisq[ivar[k1:k2] == 0] = 0  # Ignore any y=NaN values when ivar==0
+            E[i1, i2] = np.sum(chisq)
+
+    # Dynamic programming to find the best subset of iknots to use.
+    backptr = np.full(n, -1, dtype=int)
+    min_cost = np.full(n, np.inf)
+    min_cost[0] = 0
+    for i2 in range(1, n):
+        for i1 in range(i2):
+            cost = E[i1, i2]
+            if i1 > 0:
+                cost += min_cost[i1] + mu * ndata / n
+            if cost < min_cost[i2]:
+                min_cost[i2] = cost
+                backptr[i2] = i1
+
+    # Reconstruct the best subset of iknots
+    pruned = [ ]
+    j = n - 1
+    while j != -1:
+        pruned.append(j)
+        j = backptr[j]
+    pruned.reverse()
+    pruned = np.array(pruned)
+
+    xknots = grid.xgrid[iknots[pruned]]
+    y1knots = yknots[pruned[:-1]]
+    y2knots = yknots[pruned[1:]]
 
     xfit, yfit, chisq = None, None, None
 
@@ -185,15 +279,6 @@ def fitFixedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike,
 
     Returns:
     FitResult
-    -----------
-    A named tuple containing the results of the fit. The fields are:
-    - iknots: The indices of the knots.
-    - yknots: The fitted values at the knots.
-    - y1knots: The fitted values at the left side of each segment.
-    - y2knots: The fitted values at the right side of each segment.
-    - xfit: The x values corresponding to the fitted data (if fit=True).
-    - yfit: The fitted y values (if fit=True).
-    - chisq: The chi-squared values for each data point (if fit=True).
     """
     n = len(iknots)
     Adiag = np.zeros(n)
