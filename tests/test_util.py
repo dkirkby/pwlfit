@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from pwlfit.grid import Grid
-from pwlfit.util import generate_data
+from pwlfit.util import generate_data, smooth_weighted_data
 
 
 class TestGenerateData(unittest.TestCase):
@@ -21,6 +21,21 @@ class TestGenerateData(unittest.TestCase):
         self.assertEqual(data.ivar.shape, (ndata,))
         self.assertEqual(data.iknots.shape, (nknots,))
         self.assertIsInstance(data.grid, Grid)
+
+
+class TestSmoothData(unittest.TestCase):
+
+    def testTransformed(self):
+
+        D = generate_data(
+            2000, 20, 5, noise=0.01, missing_frac=0.05,
+            xlo=0.1, xhi=10, transform='log')
+
+        for transformed in (True, False):
+            ysmooth = smooth_weighted_data(
+                D.ydata, D.ivar, D.iknots, D.grid, window_size=31,
+                poly_order=3, transformed=transformed)
+            self.assertTrue(np.allclose(D.yknots, ysmooth, atol=0.01, rtol=0.02))
 
 
 if __name__ == "__main__":
