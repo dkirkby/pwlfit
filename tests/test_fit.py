@@ -48,6 +48,13 @@ class TestPrunedKnotsDiscontinuous(unittest.TestCase):
         # Check that the fitted values are within the expected range
         self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
 
+    def testDiscontinuous(self):
+        D = generate_data(ndata=500, ngrid=50, nknots=8, noise=0.05, missing_frac=0.05, continuous=False)
+        fit = fitPrunedKnotsDiscontinuous(D.ydata, D.ivar, np.arange(D.grid.ngrid), D.grid, mu=2, fit=True)
+        self.assertTrue(np.array_equal(D.iknots, fit.iknots))
+        # Check that the fitted values are within the expected range
+        self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
+
 
 class TestFixedKnotsContinuous(unittest.TestCase):
 

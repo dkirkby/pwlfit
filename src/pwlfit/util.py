@@ -13,13 +13,15 @@ class GeneratedData(NamedTuple):
     iknots: Float64NDArray
     xknots: Float64NDArray
     yknots: Float64NDArray
+    y1knots: Float64NDArray
+    y2knots: Float64NDArray
     grid: pwlfit.grid.Grid
 
 
 def generate_data(ndata: int, ngrid: int, nknots: int,
                   noise: float = 0.01, missing_frac: float = 0,
                   xlo: float = 1, xhi: float = 2, ylo: float = -1, yhi: float = 1,
-                  transform: str = "identity", seed: int = 123):
+                  continuous: bool = True, transform: str = "identity", seed: int = 123):
     """
     Generate random data for testing piecewise linear fitting.
     """
@@ -37,9 +39,19 @@ def generate_data(ndata: int, ngrid: int, nknots: int,
 
     # Generate random y values at the knots
     xknots = grid.xgrid[iknots]
-    yknots = rng.uniform(ylo, yhi, nknots)
-    # Use linear interpolation (in the transformed x space) to get ydata
-    ydata = np.interp(grid.sdata, grid.sgrid[iknots], yknots)
+    if continuous:
+        yknots = rng.uniform(ylo, yhi, nknots)
+        y1knots = yknots[:-1]
+        y2knots = yknots[1:]
+        ydata = np.interp(grid.sdata, grid.sgrid[iknots], yknots)
+    else:
+        y1knots = rng.uniform(ylo, yhi, nknots - 1)
+        y2knots = rng.uniform(ylo, yhi, nknots - 1)
+        yknots = None
+        ydata = np.empty(ndata)
+        for i in range(nknots - 1):
+            k1, k2 = grid.breaks[iknots[i]], grid.breaks[iknots[i + 1]]
+            ydata[k1:k2] = np.interp(grid.sdata[k1:k2], grid.sgrid[iknots[i:i+2]], [y1knots[i], y2knots[i]])
 
     if noise > 0:
         # Add Gaussian noise to the ydata and set ivar accordingly
@@ -53,5 +65,5 @@ def generate_data(ndata: int, ngrid: int, nknots: int,
         ydata[missing_indices] = np.nan
         ivar[missing_indices] = 0
 
-    return GeneratedData(xdata=xdata, ydata=ydata, ivar=ivar,
-                         iknots=iknots, xknots=xknots, yknots=yknots, grid=grid)
+    return GeneratedData(xdata=xdata, ydata=ydata, ivar=ivar, iknots=iknots, xknots=xknots,
+                         yknots=yknots, y1knots=y1knots, y2knots=y2knots, grid=grid)
