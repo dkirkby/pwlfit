@@ -19,6 +19,16 @@ class TestPrunedKnotsContinuous(unittest.TestCase):
         # Check that the fitted values are within the expected range
         self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
 
+    def testLog(self):
+        D = generate_data(
+            5000, 20, 5, noise=0.05, missing_frac=0.05, xlo=0.1, xhi=10, transform='log')
+        yknots = np.interp(D.grid.sgrid, D.grid.sgrid[D.iknots], D.yknots)
+        fit = fitPrunedKnotsContinuous(
+            D.ydata, D.ivar, np.arange(D.grid.ngrid), yknots, D.grid, mu=2, fit=True)
+        self.assertTrue(np.array_equal(D.iknots, fit.iknots))
+        # Check that the fitted values are within the expected range
+        self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
+
 
 class TestPrunedKnotsDiscontinuous(unittest.TestCase):
 
@@ -27,6 +37,13 @@ class TestPrunedKnotsDiscontinuous(unittest.TestCase):
         # Fit using all possible knots and verify that they are pruned to the correct subset
         fit = fitPrunedKnotsDiscontinuous(
             D.ydata, D.ivar, np.arange(D.grid.ngrid), D.grid, mu=2, fit=True)
+        self.assertTrue(np.array_equal(D.iknots, fit.iknots))
+        # Check that the fitted values are within the expected range
+        self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
+
+    def testContinuousLog(self):
+        D = generate_data(ndata=1000, ngrid=50, nknots=10, noise=0.05, missing_frac=0.05)
+        fit = fitPrunedKnotsDiscontinuous(D.ydata, D.ivar, np.arange(D.grid.ngrid), D.grid, mu=2, fit=True)
         self.assertTrue(np.array_equal(D.iknots, fit.iknots))
         # Check that the fitted values are within the expected range
         self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
@@ -89,3 +106,14 @@ class TestFixedKnotsContinuous(unittest.TestCase):
         ivar = np.zeros_like(self.D.ivar)
         with self.assertRaises(ValueError):
             fitFixedKnotsContinuous(self.D.ydata, ivar, self.D.iknots, self.D.grid, fit=True)
+
+    def testLog(self):
+        D = generate_data(ndata=1000, ngrid=50, nknots=10, noise=0.05, missing_frac=0.05)
+        fit = fitFixedKnotsContinuous(D.ydata, D.ivar, D.iknots, D.grid, fit=True)
+        self.assertTrue(np.array_equal(D.iknots, fit.iknots))
+        # Check that the fitted values are within the expected range
+        self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
+
+
+if __name__ == '__main__':
+    unittest.main()
