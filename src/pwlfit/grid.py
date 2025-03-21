@@ -57,6 +57,6 @@ class Grid:
         self.xgrid = inverse(self.sgrid)
         # Tabulate how xgrid and xdata are interleaved.
         self.breaks = np.searchsorted(self.xdata, self.xgrid)
-        self.breaks[-1] += 1
+        self.breaks[-1] = len(self.xdata)
         if not np.all(np.diff(self.breaks) > 0):
             raise ValueError("Must be at least one data point between grid points.")

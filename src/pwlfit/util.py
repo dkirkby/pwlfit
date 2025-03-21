@@ -3,7 +3,7 @@ from typing import NamedTuple
 import numpy as np
 
 import pwlfit.grid
-from plwfit.fit import Float64NDArray, Int64NDArray
+from pwlfit.fit import Float64NDArray, Int64NDArray
 
 
 class GeneratedData(NamedTuple):

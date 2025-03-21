@@ -80,7 +80,7 @@ def calculateCumulativeSums(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike,
     for i in range(1, n):
         k1, k2 = grid.breaks[iknots[i-1]], grid.breaks[iknots[i]]
         W = ivar[k1:k2]
-        X = grid.xdata[k1:k2]
+        X = grid.sdata[k1:k2]
         Y = y[k1:k2]
         WY = W * y[k1:k2]
         WY[W == 0] = 0  # Handle NaN values for ivar = 0
@@ -182,12 +182,13 @@ def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike
     pruned = np.array(pruned)
 
     xknots = grid.xgrid[pruned]
+    sknots = grid.sgrid[pruned]
     y1knots = np.zeros(len(pruned) - 1)
     y2knots = np.zeros(len(pruned) - 1)
     for j in range(len(pruned) - 1):
         sfit = segmentFit(pruned[j], pruned[j + 1], cumSums)
-        y1knots[j] = sfit.a + sfit.b * xknots[j]
-        y2knots[j] = sfit.a + sfit.b * xknots[j + 1]
+        y1knots[j] = sfit.a + sfit.b * sknots[j]
+        y2knots[j] = sfit.a + sfit.b * sknots[j + 1]
 
     xfit, yfit, chisq = evaluateFit(y, ivar, pruned, y1knots, y2knots, grid) if fit else (None, None, None)
 
