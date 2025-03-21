@@ -1,9 +1,14 @@
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 import pwlfit.grid
+
+
+Float64NDArray = NDArray[np.float64]  # np.ndarray[float] in python 3.10+
+Int64NDArray = NDArray[np.int64]      # np.ndarray[int] in python 3.10+
+
 
 class FitResult(NamedTuple):
     """A named tuple to hold the results of the piecewise linear fit.
@@ -37,23 +42,23 @@ class FitResult(NamedTuple):
     >>> for i in range(len(y1knots)):
     >>>     plt.plot([xknots[i], xknots[i+1]], [y1knots[i], y2knots[i]], 'o-')
     """
-    iknots: np.ndarray
-    xknots: np.ndarray
-    yknots: np.ndarray
-    y1knots: np.ndarray
-    y2knots: np.ndarray
-    xfit: np.ndarray = None
-    yfit: np.ndarray = None
-    chisq: np.ndarray = None
+    iknots: Int64NDArray
+    xknots: Float64NDArray
+    yknots: Float64NDArray
+    y1knots: Float64NDArray
+    y2knots: Float64NDArray
+    xfit: Union[None, Float64NDArray] = None
+    yfit: Union[None, Float64NDArray] = None
+    chisq: Union[None, Float64NDArray] = None
 
 
 class CummulativeSums(NamedTuple):
-    Sw: np.ndarray
-    Sx: np.ndarray
-    Sy: np.ndarray
-    Sxx: np.ndarray
-    Sxy: np.ndarray
-    Syy: np.ndarray
+    Sw: Float64NDArray
+    Sx: Float64NDArray
+    Sy: Float64NDArray
+    Sxx: Float64NDArray
+    Sxy: Float64NDArray
+    Syy: Float64NDArray
 
 
 def calculateCumulativeSums(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike,
@@ -327,8 +332,8 @@ def fitFixedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike,
                      xfit=xfit, yfit=yfit, chisq=chisq)
 
 
-def evaluateFit(y: np.ndarray, ivar: np.ndarray, iknots: np.ndarray,
-                y1knots: np.ndarray, y2knots: np.ndarray, grid: pwlfit.grid.Grid) -> tuple:
+def evaluateFit(y: Float64NDArray, ivar: Float64NDArray, iknots: np.ndarray,
+                y1knots: Float64NDArray, y2knots: Float64NDArray, grid: pwlfit.grid.Grid) -> tuple:
     """
     Evaluate the piecewise linear fit at the grid points defined by iknots.
 
