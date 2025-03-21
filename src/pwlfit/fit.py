@@ -184,7 +184,7 @@ def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike
         y1knots[j] = sfit.a + sfit.b * xknots[j]
         y2knots[j] = sfit.a + sfit.b * xknots[j + 1]
 
-    xfit, yfit, chisq = None, None, None
+    xfit, yfit, chisq = evaluateFit(y, ivar, pruned, y1knots, y2knots, grid) if fit else (None, None, None)
 
     return FitResult(iknots=pruned, xknots=xknots,
                      yknots=None, y1knots=y1knots, y2knots=y2knots,
@@ -258,7 +258,7 @@ def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, y
     y2knots = yknots[pruned[1:]]
     yknots = yknots[pruned]
 
-    xfit, yfit, chisq = None, None, None
+    xfit, yfit, chisq = evaluateFit(y, ivar, pruned, y1knots, y2knots, grid) if fit else (None, None, None)
 
     return FitResult(iknots=pruned, xknots=xknots,
                      yknots=yknots, y1knots=y1knots, y2knots=y2knots,
@@ -320,21 +320,42 @@ def fitFixedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike,
     y1knots = yknots[:-1]
     y2knots = yknots[1:]
 
-    xfit, yfit, chisq = None, None, None
-    if fit:
-        # Calculate corresponding chisq for each data point covered by the knots
-        xfit = np.empty(ndata)
-        yfit = np.zeros(ndata)
-        chisq = np.zeros(ndata)
-        for i in range(n - 1):
-            k1, k2 = grid.breaks[iknots[i]], grid.breaks[iknots[i + 1]]
-            xfit[k1-k0:k2-k0] = grid.xdata[k1:k2]
-            t = tsave[k1-k0:k2-k0]
-            yfit[k1-k0:k2-k0] = y1knots[i] + t * (y2knots[i] - y1knots[i])
-            wgt = ivar[k1:k2]
-            chisq[k1-k0:k2-k0] = wgt * (y[k1:k2] - yfit[k1-k0:k2-k0]) ** 2
-            chisq[k1-k0:k2-k0][wgt == 0] = 0
+    xfit, yfit, chisq = evaluateFit(y, ivar, iknots, y1knots, y2knots, grid) if fit else (None, None, None)
 
     return FitResult(iknots=iknots, xknots=xknots,
                      yknots=yknots, y1knots=y1knots, y2knots=y2knots,
                      xfit=xfit, yfit=yfit, chisq=chisq)
+
+
+def evaluateFit(y: np.ndarray, ivar: np.ndarray, iknots: np.ndarray,
+                y1knots: np.ndarray, y2knots: np.ndarray, grid: pwlfit.grid.Grid) -> tuple:
+    """
+    Evaluate the piecewise linear fit at the grid points defined by iknots.
+
+    Parameters:
+    y (np.ndarray): The y values of the data to fit. Ignored when corresponding ivar=0.
+    ivar (np.ndarray): The inverse variance of the data (1/sigma^2).
+    iknots (np.ndarray): The indices of the knots in the grid.
+    y1knots (np.ndarray): The y values at the left side of each segment.
+    y2knots (np.ndarray): The y values at the right side of each segment.
+    grid (Grid): The grid object containing the xdata and sdata.
+
+    Returns:
+    tuple: A tuple (xfit, yfit, chisq) to include in a FitResult
+    """
+    n = len(iknots)
+    k0 = grid.breaks[iknots[0]]
+    ndata = grid.breaks[iknots[-1]] - k0
+    xfit = np.zeros(ndata)
+    yfit = np.zeros(ndata)
+    chisq = np.zeros(ndata)
+    for i in range(n - 1):
+        k1, k2 = grid.breaks[iknots[i]], grid.breaks[iknots[i + 1]]
+        xfit[k1-k0:k2-k0] = grid.xdata[k1:k2]
+        t = (grid.sdata[k1:k2] - grid.sgrid[iknots[i]]) / (grid.sgrid[iknots[i + 1]] - grid.sgrid[iknots[i]])
+        yfit[k1-k0:k2-k0] = y1knots[i] + t * (y2knots[i] - y1knots[i])
+        wgt = ivar[k1:k2]
+        chisq[k1-k0:k2-k0] = wgt * (y[k1:k2] - yfit[k1-k0:k2-k0]) ** 2
+        chisq[k1-k0:k2-k0][wgt == 0] = 0  # Ignore any y=NaN values when ivar==0
+
+    return xfit, yfit, chisq
