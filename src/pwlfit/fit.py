@@ -19,6 +19,9 @@ class FitResult(NamedTuple):
     - yknots: The y values at the knots (None for discontinuous fits).
     - y1knots: The fitted values at the left side of each segment.
     - y2knots: The fitted values at the right side of each segment.
+    - ndof: The number of degrees of freedom for the fit, equal to the number of
+        data points in the fit region minus the number of free parameters in the fit.
+        Note that data points with ivar==0 are included in this count.
     - xfit: The x values corresponding to the fitted data (if fit=True).
     - yfit: The fitted y values (if fit=True).
     - chisq: The chi-squared values for each data point (if fit=True).
@@ -47,6 +50,7 @@ class FitResult(NamedTuple):
     yknots: Float64NDArray
     y1knots: Float64NDArray
     y2knots: Float64NDArray
+    ndof: int
     xfit: Union[None, Float64NDArray] = None
     yfit: Union[None, Float64NDArray] = None
     chisq: Union[None, Float64NDArray] = None
@@ -189,12 +193,13 @@ def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike
         sfit = segmentFit(pruned[j], pruned[j + 1], cumSums)
         y1knots[j] = sfit.a + sfit.b * sknots[j]
         y2knots[j] = sfit.a + sfit.b * sknots[j + 1]
+    ndof = ndata - 2 * (len(pruned) - 1) # 2 parameters per segment
 
     xfit, yfit, chisq = evaluateFit(y, ivar, pruned, y1knots, y2knots, grid) if fit else (None, None, None)
 
     return FitResult(iknots=pruned, xknots=xknots,
                      yknots=None, y1knots=y1knots, y2knots=y2knots,
-                     xfit=xfit, yfit=yfit, chisq=chisq)
+                     xfit=xfit, yfit=yfit, chisq=chisq, ndof=ndof)
 
 
 def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, yknots: ArrayLike,
@@ -263,16 +268,17 @@ def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, y
     y1knots = yknots[pruned[:-1]]
     y2knots = yknots[pruned[1:]]
     yknots = yknots[pruned]
+    ndof = ndata - len(pruned)  # 1 parameter per knot
 
     xfit, yfit, chisq = evaluateFit(y, ivar, pruned, y1knots, y2knots, grid) if fit else (None, None, None)
 
     return FitResult(iknots=pruned, xknots=xknots,
                      yknots=yknots, y1knots=y1knots, y2knots=y2knots,
-                     xfit=xfit, yfit=yfit, chisq=chisq)
+                     xfit=xfit, yfit=yfit, chisq=chisq, ndof=ndof)
 
 
-def fitFixedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike,
-                            grid: pwlfit.grid.Grid, fit: bool = False) -> FitResult:
+def fitFixedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, grid: pwlfit.grid.Grid,
+                            iknots: Union[None, ArrayLike] = None, fit: bool = False) -> FitResult:
     """
     Fit a continuous piecewise linear function to noisy data with fixed knots.
     The free parameters are the values of the piecewise linear function at the knots.
@@ -280,14 +286,17 @@ def fitFixedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike,
     Parameters:
     y (np.ndarray): The y values of the data to fit. Ignored when corresponding ivar=0.
     ivar (np.ndarray): The inverse variance of the data (1/sigma^2).
-    iknots (np.ndarray): The indices of the knots in the grid.
-    grid (Grid): The grid object containing the xdata and sdata.
+    grid (Grid): The grid object defining the x coordinates of the data and linear segment
+        boundaries to use.
+    iknots (np.ndarray): The indices of the knots in the grid or use all available grid
+        points if None. Default is None.
     fit (bool): If True, return the fitted values and chi-squared for each data point.
         Default is False.
 
     Returns:
     FitResult
     """
+    iknots = checkIKnots(iknots, grid)
     n = len(iknots)
     Adiag = np.zeros(n)
     Aupper = np.zeros(n)
@@ -325,12 +334,13 @@ def fitFixedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike,
     xknots = grid.xgrid[iknots]
     y1knots = yknots[:-1]
     y2knots = yknots[1:]
+    ndof = ndata - n
 
     xfit, yfit, chisq = evaluateFit(y, ivar, iknots, y1knots, y2knots, grid) if fit else (None, None, None)
 
     return FitResult(iknots=iknots, xknots=xknots,
                      yknots=yknots, y1knots=y1knots, y2knots=y2knots,
-                     xfit=xfit, yfit=yfit, chisq=chisq)
+                     xfit=xfit, yfit=yfit, chisq=chisq, ndof=ndof)
 
 
 def evaluateFit(y: Float64NDArray, ivar: Float64NDArray, iknots: np.ndarray,
@@ -365,3 +375,17 @@ def evaluateFit(y: Float64NDArray, ivar: Float64NDArray, iknots: np.ndarray,
         chisq[k1-k0:k2-k0][wgt == 0] = 0  # Ignore any y=NaN values when ivar==0
 
     return xfit, yfit, chisq
+
+
+def checkIKnots(iknots, grid):
+    """Check that the provided iknots are valid for the given grid."""
+    if iknots is None:
+        # Use all knots by default
+        return np.arange(grid.ngrid)
+    if not np.all(np.diff(iknots) > 0):
+        raise ValueError("iknots must be strictly increasing.")
+    if iknots[0] < 0 or iknots[-1] >= grid.ngrid:
+        raise ValueError("iknots must be within the range of the grid.")
+    if len(iknots) < 2:
+        raise ValueError("At least two knots are required.")
+    return iknots

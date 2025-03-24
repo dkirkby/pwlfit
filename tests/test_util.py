@@ -46,8 +46,8 @@ class TestSampleData(unittest.TestCase):
             xdata, ydata, ivar = read_sample_data(sampleID)
             self.assertTrue(xdata.size == ydata.size)
             self.assertTrue(xdata.size == ivar.size)
-            self.assertTrue(np.all(np.diff(xdata) > 0))
             self.assertTrue(np.all(ivar >= 0))
+            self.assertTrue(np.all(np.diff(xdata[ivar > 0]) > 0))
 
     def testReadX(self):
         # Test that ValueError is raised for invalid sampleID

@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 
+from pwlfit.grid import Grid
 from pwlfit.fit import fitFixedKnotsContinuous, fitPrunedKnotsDiscontinuous, fitPrunedKnotsContinuous
 from pwlfit.util import generate_data
 
@@ -64,7 +65,7 @@ class TestFixedKnotsContinuous(unittest.TestCase):
     def testFullRange(self):
         iknots = self.D.iknots
         ndata = self.D.grid.breaks[iknots[-1]] - self.D.grid.breaks[iknots[0]]
-        fit = fitFixedKnotsContinuous(self.D.ydata, self.D.ivar, iknots, self.D.grid, fit=True)
+        fit = fitFixedKnotsContinuous(self.D.ydata, self.D.ivar, self.D.grid, iknots, fit=True)
         # Check that the fit results are of the expected shape
         self.assertTrue(np.array_equal(fit.iknots, iknots))
         self.assertEqual(fit.xknots.shape, (len(iknots),))
@@ -80,7 +81,7 @@ class TestFixedKnotsContinuous(unittest.TestCase):
     def testPartialRange(self):
         iknots = self.D.iknots[2:-1]
         ndata = self.D.grid.breaks[iknots[-1]] - self.D.grid.breaks[iknots[0]]
-        fit = fitFixedKnotsContinuous(self.D.ydata, self.D.ivar, iknots, self.D.grid, fit=True)
+        fit = fitFixedKnotsContinuous(self.D.ydata, self.D.ivar, self.D.grid, iknots, fit=True)
         # Check that the fit results are of the expected shape
         self.assertTrue(np.array_equal(fit.iknots, iknots))
         self.assertEqual(fit.xknots.shape, (len(iknots),))
@@ -96,7 +97,7 @@ class TestFixedKnotsContinuous(unittest.TestCase):
     def testSubRange(self):
         iknots = self.D.iknots[2::2]
         ndata = self.D.grid.breaks[iknots[-1]] - self.D.grid.breaks[iknots[0]]
-        fit = fitFixedKnotsContinuous(self.D.ydata, self.D.ivar, iknots, self.D.grid, fit=True)
+        fit = fitFixedKnotsContinuous(self.D.ydata, self.D.ivar, self.D.grid, iknots, fit=True)
         # Check that the fit results are of the expected shape
         self.assertTrue(np.array_equal(fit.iknots, iknots))
         self.assertEqual(fit.xknots.shape, (len(iknots),))
@@ -112,12 +113,18 @@ class TestFixedKnotsContinuous(unittest.TestCase):
     def testZeroIvar(self):
         ivar = np.zeros_like(self.D.ivar)
         with self.assertRaises(ValueError):
-            fitFixedKnotsContinuous(self.D.ydata, ivar, self.D.iknots, self.D.grid, fit=True)
+            fitFixedKnotsContinuous(self.D.ydata, ivar, self.D.grid, self.D.iknots, fit=True)
 
     def testLog(self):
         D = generate_data(ndata=1000, ngrid=50, nknots=10, noise=0.05, missing_frac=0.05)
-        fit = fitFixedKnotsContinuous(D.ydata, D.ivar, D.iknots, D.grid, fit=True)
+        fit = fitFixedKnotsContinuous(D.ydata, D.ivar, D.grid, D.iknots, fit=True)
         self.assertTrue(np.array_equal(D.iknots, fit.iknots))
+        # Check that the fitted values are within the expected range
+        self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
+
+    def testWithXGrid(self):
+        grid = Grid(self.D.xdata, xgrid=self.D.xknots)
+        fit = fitFixedKnotsContinuous(self.D.ydata, self.D.ivar, grid, fit=True)
         # Check that the fitted values are within the expected range
         self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
 

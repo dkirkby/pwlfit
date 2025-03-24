@@ -42,6 +42,18 @@ class TestGrid(unittest.TestCase):
         grid = Grid(xdata, ngrid=25, transform=np.log, inverse=np.exp)
         self.verify_breaks(grid)
 
+    def test_xgrid_ok(self):
+        xdata = np.linspace(0, 10, 101)
+        xgrid = np.linspace(0, 10, 11)
+        grid = Grid(xdata, xgrid=xgrid)
+        self.verify_breaks(grid)
+
+    def test_xgrid_ngrid_ok(self):
+        xdata = np.linspace(0, 10, 101)
+        xgrid = np.linspace(0, 10, 11)
+        grid = Grid(xdata, xgrid=xgrid, ngrid=len(xgrid))
+        self.verify_breaks(grid)
+
 
 if __name__ == "__main__":
     unittest.main()
