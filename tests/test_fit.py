@@ -55,6 +55,15 @@ class TestPrunedKnotsDiscontinuous(unittest.TestCase):
         # Check that the fitted values are within the expected range
         self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
 
+    def testWithIKnots(self):
+        D = generate_data(ndata=1000, ngrid=50, nknots=10, noise=0.05, missing_frac=0.05)
+        # Fit using all possible knots and verify that they are pruned to the correct subset
+        fit = fitPrunedKnotsDiscontinuous(D.ydata, D.ivar, D.grid,
+                                          iknots=np.arange(D.grid.ngrid), mu=2, fit=True)
+        self.assertTrue(np.array_equal(D.iknots, fit.iknots))
+        # Check that the fitted values are within the expected range
+        self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
+
 
 class TestFixedKnotsContinuous(unittest.TestCase):
 
@@ -126,6 +135,9 @@ class TestFixedKnotsContinuous(unittest.TestCase):
         fit = fitFixedKnotsContinuous(self.D.ydata, self.D.ivar, grid, fit=True)
         # Check that the fitted values are within the expected range
         self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
+
+    def testWithDefaultIKnots(self):
+        fit = fitFixedKnotsContinuous(self.D.ydata, self.D.ivar, self.D.grid, fit=True)
 
 
 if __name__ == '__main__':
