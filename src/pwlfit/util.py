@@ -1,4 +1,6 @@
 from typing import NamedTuple
+from importlib_resources import files
+import json
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -17,6 +19,33 @@ class GeneratedData(NamedTuple):
     y1knots: Float64NDArray
     y2knots: Float64NDArray
     grid: pwlfit.grid.Grid
+
+
+def read_sample_data(sampleID: str) -> tuple:
+    """
+    Read sample data from a file and return the xdata, ydata, and ivar.
+
+    Parameters
+    ----------
+    sampleID : str
+        The ID of the sample data file to read. One of 'A', 'B', or 'C'.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - xdata: The x values of the data points.
+        - ydata: The y values of the data points.
+        - ivar: The inverse variance of the data points (1/noise^2).
+    """
+    if sampleID not in ('A', 'B', 'C'):
+        raise ValueError("sampleID must be one of 'A', 'B', or 'C'.")
+    txt = files('pwlfit.data').joinpath(f'sample{sampleID}.json').read_text()
+    data = json.loads(txt)
+    xdata = np.array(data['x'])
+    ydata = np.array(data['y'])
+    ivar = np.array(data['ivar'])
+    return xdata, ydata, ivar
 
 
 def generate_data(ndata: int, ngrid: int, nknots: int,

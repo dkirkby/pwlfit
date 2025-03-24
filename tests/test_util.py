@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from pwlfit.grid import Grid
-from pwlfit.util import generate_data, smooth_weighted_data
+from pwlfit.util import generate_data, smooth_weighted_data, read_sample_data
 
 
 class TestGenerateData(unittest.TestCase):
@@ -36,6 +36,25 @@ class TestSmoothData(unittest.TestCase):
                 D.ydata, D.ivar, D.iknots, D.grid, window_size=31,
                 poly_order=3, transformed=transformed)
             self.assertTrue(np.allclose(D.yknots, ysmooth, atol=0.01, rtol=0.02))
+
+
+class TestSampleData(unittest.TestCase):
+
+    def testReadABC(self):
+
+        for sampleID in 'ABC':
+            xdata, ydata, ivar = read_sample_data(sampleID)
+            self.assertTrue(xdata.size == ydata.size)
+            self.assertTrue(xdata.size == ivar.size)
+            self.assertTrue(np.all(np.diff(xdata) > 0))
+            self.assertTrue(np.all(ivar >= 0))
+
+    def testReadX(self):
+        # Test that ValueError is raised for invalid sampleID
+        with self.assertRaises(ValueError):
+            read_sample_data('X')
+        with self.assertRaises(ValueError):
+            read_sample_data('')
 
 
 if __name__ == "__main__":
