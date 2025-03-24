@@ -36,22 +36,21 @@ class TestPrunedKnotsDiscontinuous(unittest.TestCase):
     def testContinuous(self):
         D = generate_data(ndata=1000, ngrid=50, nknots=10, noise=0.05, missing_frac=0.05)
         # Fit using all possible knots and verify that they are pruned to the correct subset
-        fit = fitPrunedKnotsDiscontinuous(
-            D.ydata, D.ivar, np.arange(D.grid.ngrid), D.grid, mu=2, fit=True)
+        fit = fitPrunedKnotsDiscontinuous(D.ydata, D.ivar, D.grid, mu=2, fit=True)
         self.assertTrue(np.array_equal(D.iknots, fit.iknots))
         # Check that the fitted values are within the expected range
         self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
 
     def testContinuousLog(self):
         D = generate_data(ndata=1000, ngrid=50, nknots=10, noise=0.05, missing_frac=0.05)
-        fit = fitPrunedKnotsDiscontinuous(D.ydata, D.ivar, np.arange(D.grid.ngrid), D.grid, mu=2, fit=True)
+        fit = fitPrunedKnotsDiscontinuous(D.ydata, D.ivar, D.grid, mu=2, fit=True)
         self.assertTrue(np.array_equal(D.iknots, fit.iknots))
         # Check that the fitted values are within the expected range
         self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
 
     def testDiscontinuous(self):
         D = generate_data(ndata=500, ngrid=50, nknots=8, noise=0.05, missing_frac=0.05, continuous=False)
-        fit = fitPrunedKnotsDiscontinuous(D.ydata, D.ivar, np.arange(D.grid.ngrid), D.grid, mu=2, fit=True)
+        fit = fitPrunedKnotsDiscontinuous(D.ydata, D.ivar, D.grid, mu=2, fit=True)
         self.assertTrue(np.array_equal(D.iknots, fit.iknots))
         # Check that the fitted values are within the expected range
         self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))

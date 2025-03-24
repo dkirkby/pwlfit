@@ -140,8 +140,8 @@ def segmentFit(i1: int, i2: int, cumSums: CummulativeSums, eps: float = 1e-10) -
     return SegmentFit(a=a, b=b, chisq=chisq)
 
 
-def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike,
-                                grid: pwlfit.grid.Grid, mu: float = 2,
+def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, grid: pwlfit.grid.Grid,
+                                iknots: Union[None, ArrayLike] = None, mu: float = 2,
                                 fit: bool = False) -> FitResult:
     """
     Fit a discontinuous piecewise linear function to noisy data with pruned knots.
@@ -151,8 +151,9 @@ def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike
     Parameters:
     y (np.ndarray): The y values of the data to fit. Ignored when corresponding ivar=0.
     ivar (np.ndarray): The inverse variance of the data (1/sigma^2).
-    iknots (np.ndarray): The indices of the knots in the grid.
     grid (Grid): The grid object containing the xdata and sdata.
+    iknots (np.ndarray): The indices of the knots in the grid or use all available grid
+        points if None. Default is None.
     mu (float): A penalty term for the number of knots. Larger values will favor fewer knots.
     fit (bool): If True, return the fitted values and chi-squared for each data point.
         Default is False.
@@ -160,6 +161,7 @@ def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike
     Returns:
     FitResult
     """
+    iknots = checkIKnots(iknots, grid)
     cumSums = calculateCumulativeSums(y, ivar, iknots, grid)
 
     n = len(iknots)
