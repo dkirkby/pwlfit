@@ -179,33 +179,40 @@ def fitPrunedKnotsDiscontinuous(y: ArrayLike, ivar: ArrayLike, grid: pwlfit.grid
             if cost < min_cost[i2]:
                 min_cost[i2] = cost
                 backptr[i2] = i1
+    # Build pruned list of indices into the original iknots using dynamic programming
     pruned = [ ]
     j = n - 1
     while j != -1:
-        pruned.append(iknots[j])
+        pruned.append(j)
         j = backptr[j]
     pruned.reverse()
     pruned = np.array(pruned)
 
-    xknots = grid.xgrid[pruned]
-    sknots = grid.sgrid[pruned]
-    y1knots = np.zeros(len(pruned) - 1)
-    y2knots = np.zeros(len(pruned) - 1)
-    for j in range(len(pruned) - 1):
+    # Tabulate the final pruned knots
+    iknots = iknots[pruned]
+    xknots = grid.xgrid[iknots]
+    sknots = grid.sgrid[iknots]
+
+    # Recalculate fits for final pruned segments (could cache these earlier)
+    N = len(pruned) - 1
+    y1knots = np.zeros(N)
+    y2knots = np.zeros(N)
+    for j in range(N):
         sfit = segmentFit(pruned[j], pruned[j + 1], cumSums)
         y1knots[j] = sfit.a + sfit.b * sknots[j]
         y2knots[j] = sfit.a + sfit.b * sknots[j + 1]
-    ndof = ndata - 2 * (len(pruned) - 1) # 2 parameters per segment
 
-    xfit, yfit, chisq = evaluateFit(y, ivar, pruned, y1knots, y2knots, grid) if fit else (None, None, None)
+    ndof = ndata - 2 * N   # 2 parameters per segment
 
-    return FitResult(iknots=pruned, xknots=xknots,
+    xfit, yfit, chisq = evaluateFit(y, ivar, iknots, y1knots, y2knots, grid) if fit else (None, None, None)
+
+    return FitResult(iknots=iknots, xknots=xknots,
                      yknots=None, y1knots=y1knots, y2knots=y2knots,
                      xfit=xfit, yfit=yfit, chisq=chisq, ndof=ndof)
 
 
-def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, yknots: ArrayLike,
-                             grid: pwlfit.grid.Grid, mu: float = 2, fit: bool = False) -> FitResult:
+def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, grid: pwlfit.grid.Grid, yknots: ArrayLike,
+                             iknots: Union[None, ArrayLike] = None, mu: float = 2, fit: bool = False) -> FitResult:
     """
     Fit a continuous piecewise linear function to noisy data with pruned knots.
     Since the y values to use at each knot are provided, the linear segment between
@@ -216,9 +223,10 @@ def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, y
     Parameters:
     y (np.ndarray): The y values of the data to fit. Ignored when corresponding ivar=0.
     ivar (np.ndarray): The inverse variance of the data (1/sigma^2).
-    iknots (np.ndarray): The indices of the knots in the grid.
-    yknots (np.ndarray): The y values at the knots to use for the fit.
     grid (Grid): The grid object containing the xdata and sdata.
+    yknots (np.ndarray): The y values at the knots to use for the fit.
+    iknots (np.ndarray): The indices of the knots in the grid or use all available grid
+        points if None. Default is None.
     mu (float): A penalty term for the number of knots. Larger values will favor fewer knots.
     fit (bool): If True, return the fitted values and chi-squared for each data point.
         Default is False.
@@ -226,6 +234,7 @@ def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, y
     Returns:
     FitResult
     """
+    iknots = checkIKnots(iknots, grid)
     n = len(iknots)
     ndata = grid.breaks[iknots[-1]] - grid.breaks[iknots[0]]
 
@@ -257,7 +266,7 @@ def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, y
                 min_cost[i2] = cost
                 backptr[i2] = i1
 
-    # Reconstruct the best subset of iknots
+    # Build pruned list of indices into the original iknots using dynamic programming
     pruned = [ ]
     j = n - 1
     while j != -1:
@@ -270,11 +279,12 @@ def fitPrunedKnotsContinuous(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, y
     y1knots = yknots[pruned[:-1]]
     y2knots = yknots[pruned[1:]]
     yknots = yknots[pruned]
-    ndof = ndata - len(pruned)  # 1 parameter per knot
+    iknots = iknots[pruned]
+    ndof = ndata - len(iknots)  # 1 parameter per knot
 
-    xfit, yfit, chisq = evaluateFit(y, ivar, pruned, y1knots, y2knots, grid) if fit else (None, None, None)
+    xfit, yfit, chisq = evaluateFit(y, ivar, iknots, y1knots, y2knots, grid) if fit else (None, None, None)
 
-    return FitResult(iknots=pruned, xknots=xknots,
+    return FitResult(iknots=iknots, xknots=xknots,
                      yknots=yknots, y1knots=y1knots, y2knots=y2knots,
                      xfit=xfit, yfit=yfit, chisq=chisq, ndof=ndof)
 
