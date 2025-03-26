@@ -42,9 +42,12 @@ def read_sample_data(sampleID: str) -> tuple:
         raise ValueError("sampleID must be one of 'A', 'B', or 'C'.")
     txt = files('pwlfit.data').joinpath(f'sample{sampleID}.json').read_text()
     data = json.loads(txt)
-    xdata = np.array(data['x'])
-    ydata = np.array(data['y'])
-    ivar = np.array(data['ivar'])
+    xdata = np.array(data['x'], dtype=np.float64)
+    # ydata might contain null values in json which are read as None.
+    # Convert these to np.nan before building the numpy array.
+    # Note that y==NaN is valid but only when ivar==0.
+    ydata = np.array([ y if y is not None else np.nan for y in data['y']], dtype=np.float64)
+    ivar = np.array(data['ivar'], dtype=np.float64)
     return xdata, ydata, ivar
 
 
