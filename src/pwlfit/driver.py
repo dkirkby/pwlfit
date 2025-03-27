@@ -40,11 +40,18 @@ class PrunedFitDiscontinuousConfig:
     penalty: float = 2
 
 @dataclass
+class FinalFitConfig:
+    verbose: bool = False
+    max_spacing_factor: int = 9
+    eval_fit: bool = False
+
+@dataclass
 class PWLinearFitConfig:
     options: PWLinearFitOptions = field(default_factory=PWLinearFitOptions)
     regions: FindRegionsConfig = field(default_factory=FindRegionsConfig)
     continuous: PrunedFitContinuousConfig = field(default_factory=PrunedFitContinuousConfig)
     discontinuous: PrunedFitDiscontinuousConfig = field(default_factory=PrunedFitDiscontinuousConfig)
+    final: FinalFitConfig = field(default_factory=FinalFitConfig)
 
 
 class PWLinearFitter:
@@ -106,9 +113,15 @@ class PWLinearFitter:
                 print(f'Pruned region {i} from {region.hi-region.lo+1} to {len(region.fit.iknots)} knots')
 
         # Combined pruned regions into a global list of knots to use for the final fit
+        fconf = self.config.final
+        iknots = pwlfit.region.combineRegions(
+            self.regions, self.grid, max_spacing_factor=fconf.max_spacing_factor, verbose=fconf.verbose)
+        if opts.verbose or fconf.verbose:
+            print(f'Final fit uses {len(iknots)} knots')
 
         # Perform the final fit
+        self.fit = pwlfit.fit.fitFixedKnotsContinuous(y, ivar, self.grid, iknots=iknots, fit=fconf.eval_fit)
 
         # Prune the final fit to remove the least significant knots if necessary
 
-        return None
+        return self.fit
