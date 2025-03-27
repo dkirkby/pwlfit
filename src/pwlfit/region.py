@@ -18,16 +18,18 @@ class Region:
 
 def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
                 inset: int = 4, pad: int = 3, chisq_cut: float = 4,
-                window_size: int = 19, poly_order: int = 1) -> Tuple[float,List[Region]]:
+                window_size: int = 19, poly_order: int = 1
+                ) -> Tuple[float, NDArray[np.float64], List[Region]]:
     """
     Find regions of the fit where the chisq is above a threshold that can be analyzed independently.
 
     Parameters
     ----------
     fit : FitResult
-        The fit to analyze.
+        The result of a coarse fit to the data that captures the overall smooth structure.
+        Must have a valid chisq attribute.
     grid : Grid
-        The grid used for the fit.
+        The grid of possible knot locations to use for finding regions.
     inset : int
         The number of grid points to ignore at the beginning and end of the grid.
     pad : int
@@ -44,9 +46,13 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
     -------
     float
         The median of the smoothed chisq.
+    NDArray[np.float64]
+        The smoothed array of chisq values.
     List[Region]
         The list of regions where the chisq is above the threshold.
     """
+    if fit.chisq is None:
+        raise ValueError('FitResult must have a valid chisq. Did you forget fit=True?')
     if 2 * inset >= grid.ngrid:
         raise ValueError(f'Invalid inset value {inset}')
     if pad < 0 or 2 * pad >= grid.ngrid:
@@ -89,4 +95,4 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
         else:
             merged.append(regions[i])
 
-    return chisq_median, merged
+    return chisq_median, chisq_smooth, merged
