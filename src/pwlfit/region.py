@@ -2,7 +2,7 @@ from typing import Tuple, List, Union
 from dataclasses import dataclass
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import NDArray
 
 import pwlfit.fit
 import pwlfit.grid
@@ -97,3 +97,46 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
             merged.append(regions[i])
 
     return chisq_median, chisq_smooth, merged
+
+
+def insertKnots(i1: int, i2: int, max_span: int, verbose: bool = False) -> List[int]:
+    """Insert knots to fit the smooth trend outside of any region.
+    """
+    iknots = [ ]
+    ninsert = int(np.floor((i2 - i1 + 1) / max_span))
+    if ninsert > 0:
+        spacing = int(np.round((i2 - i1 + 1) / (ninsert + 1)))
+        #iknots = spacing * (1 + np.range(ninsert)) + i1
+        iknots = [ i1 + (j + 1) * spacing for j in range(ninsert) ]
+        if verbose:
+            print(f'Inserting {len(iknots)} knots {iknots} to fit continuum over [{i1},{i2}]')
+        return iknots
+    else:
+        return [ ]
+
+
+def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
+                   max_spacing_factor: int = 9, verbose: bool = False) -> List[int]:
+    """Combine regions into a list of knots for the final fit.
+    """
+    iknots = [ 0 ]
+    iprev = 0
+    max_span = int(np.floor((grid.ngrid - 1 ) / (max_spacing_factor - 1)))
+    if verbose:
+        print(f'Combining {len(regions)} regions with max_span {max_span}')
+    for iregion, region in enumerate(regions):
+        ilo, ihi = region.lo, region.hi
+        # Insert knots for continuum fit before this region, if necessary
+        iknots.extend(insertKnots(iprev, ilo, max_span, verbose))
+        # Add the pruned knots for this region
+        region_knots = region.fit.iknots
+        if verbose:
+            print(f'Adding {len(region_knots)} knots {region_knots} for region {iregion} [{ilo},{ihi}]')
+        iknots.extend(region_knots)
+        iprev = ihi
+    # Insert knots for continuum fit after the last region, if necessary
+    ilast = grid.ngrid - 1
+    iknots.extend(insertKnots(iprev, ilast, max_span, verbose))
+    iknots.append(ilast)
+
+    return iknots
