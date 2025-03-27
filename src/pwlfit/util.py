@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import NamedTuple, Union
 from importlib_resources import files
 import json
 
@@ -6,7 +6,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 import pwlfit.grid
-from pwlfit.fit import Float64NDArray, Int64NDArray
+from pwlfit.fit import Float64NDArray, Int64NDArray, checkIKnots
 
 
 class GeneratedData(NamedTuple):
@@ -146,8 +146,9 @@ def generate_data(ndata: int, ngrid: int, nknots: int,
                          yknots=yknots, y1knots=y1knots, y2knots=y2knots, grid=grid)
 
 
-def smooth_weighted_data(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, grid: pwlfit.grid.Grid,
-                         window_size: int, poly_order: int = 3, transformed: bool = True) -> Float64NDArray:
+def smooth_weighted_data(y: ArrayLike, ivar: ArrayLike, grid: pwlfit.grid.Grid,
+                         iknots: Union[None, ArrayLike] = None, window_size: int = 9,
+                         poly_order: int = 3, transformed: bool = True) -> Float64NDArray:
     """Smooth the data using a weighted Savitsky-Golay polynomial fit around each knot.
 
     Parameters
@@ -157,14 +158,15 @@ def smooth_weighted_data(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, grid:
         Values where ivar==0 are ignored.
     ivar : ArrayLike
         The inverse variance of the data points. Must have the same length as grid.xdata.
-    iknots : ArrayLike
-        The indices of the knots in the grid where smoothed values are required.
     grid : pwlfit.grid.Grid
         The grid object containing information about the grid to use.
+    iknots : ArrayLike
+        The indices of the knots in the grid where smoothed values are required or use
+        all grid points if None. Default is None.
     window_size : int
         The size of the smoothing window. Must be an odd integer. The size is in index space,
         not the physical (x or s) grid space, i.e. it determines how many data points close
-        to each knot are used in the polynomial fit.
+        to each knot are used in the polynomial fit. Default is 9.
     poly_order : int
         The order of the polynomial to fit within the smoothing window. Default is 3.
     transformed : bool
@@ -184,6 +186,8 @@ def smooth_weighted_data(y: ArrayLike, ivar: ArrayLike, iknots: ArrayLike, grid:
         raise ValueError("y must have the same length as grid.xdata")
     if not len(ivar) == len(grid.xdata):
         raise ValueError("ivar must have the same length as grid.xdata")
+
+    iknots = checkIKnots(iknots, grid)
 
     half_window = window_size // 2
     n = len(iknots)

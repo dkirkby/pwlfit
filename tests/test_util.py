@@ -33,9 +33,15 @@ class TestSmoothData(unittest.TestCase):
 
         for transformed in (True, False):
             ysmooth = smooth_weighted_data(
-                D.ydata, D.ivar, D.iknots, D.grid, window_size=31,
+                D.ydata, D.ivar, D.grid, iknots=D.iknots, window_size=31,
                 poly_order=3, transformed=transformed)
             self.assertTrue(np.allclose(D.yknots, ysmooth, atol=0.01, rtol=0.02))
+
+    def testDefaultIKnots(self):
+
+        D = generate_data(5000, 20, 20, noise=0.01, missing_frac=0.05)
+        ysmooth = smooth_weighted_data(D.ydata, D.ivar, D.grid, window_size=31, poly_order=3)
+        self.assertTrue(np.allclose(D.yknots, ysmooth, atol=0.01, rtol=0.02))
 
 
 class TestSampleData(unittest.TestCase):
