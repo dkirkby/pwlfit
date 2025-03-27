@@ -1,4 +1,4 @@
-from typing import Tuple,List
+from typing import Tuple, List, Union
 from dataclasses import dataclass
 
 import numpy as np
@@ -14,6 +14,7 @@ import scipy.signal
 class Region:
     lo: int
     hi: int
+    fit: Union[None, pwlfit.fit.FitResult] = None
 
 
 def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
