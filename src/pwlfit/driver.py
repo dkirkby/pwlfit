@@ -1,5 +1,8 @@
 from dataclasses import dataclass, asdict, field
 from typing import Callable, Union
+from pathlib import Path
+
+import yaml
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -125,3 +128,20 @@ class PWLinearFitter:
         # Prune the final fit to remove the least significant knots if necessary
 
         return self.fit
+
+    def saveConfig(self, filename: Union[str,Path]) -> None:
+
+        with open(filename, 'w') as f:
+            yaml.dump(asdict(self.config), f, sort_keys=False)
+
+    @staticmethod
+    def loadConfig(filename: Union[str,Path]) -> PWLinearFitConfig:
+
+        with open(filename, 'r') as f:
+            config = yaml.safe_load(f)
+        return PWLinearFitConfig(
+            options=PWLinearFitOptions(**config.get('options', {})),
+            regions=FindRegionsConfig(**config.get('regions', {})),
+            continuous=PrunedFitContinuousConfig(**config.get('continuous', {})),
+            discontinuous=PrunedFitDiscontinuousConfig(**config.get('discontinuous', {})),
+            final=FinalFitConfig(**config.get('final', {})))
