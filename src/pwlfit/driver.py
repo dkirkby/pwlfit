@@ -56,10 +56,27 @@ class PWLinearFitConfig:
     discontinuous: PrunedFitDiscontinuousConfig = field(default_factory=PrunedFitDiscontinuousConfig)
     final: FinalFitConfig = field(default_factory=FinalFitConfig)
 
+    def save(self, filename: Union[str,Path]) -> None:
+
+        with open(filename, 'w') as f:
+            yaml.dump(asdict(self), f, sort_keys=False)
+
+    @classmethod
+    def load(cls, filename: Union[str,Path]) -> "PWLinearFitConfig":
+
+        with open(filename, 'r') as f:
+            config = yaml.safe_load(f)
+        return cls(
+            options=PWLinearFitOptions(**config.get('options', {})),
+            regions=FindRegionsConfig(**config.get('regions', {})),
+            continuous=PrunedFitContinuousConfig(**config.get('continuous', {})),
+            discontinuous=PrunedFitDiscontinuousConfig(**config.get('discontinuous', {})),
+            final=FinalFitConfig(**config.get('final', {})))
+
 
 class PWLinearFitter:
 
-    def __init__(self, grid: pwlfit.grid.Grid, config: PWLinearFitConfig):
+    def __init__(self, grid: pwlfit.grid.Grid, config: PWLinearFitConfig = PWLinearFitConfig()) -> None:
         self.grid = grid
         self.config = config
         if self.config.options.find_regions:
@@ -94,7 +111,7 @@ class PWLinearFitter:
                     print(f'  region[{i}] lo={region.lo} hi={region.hi}')
         else:
             # Create a single region covering the entire grid
-            self.regions = [ pwlfit.region.Region(lo=0, hi=self.grid.ngrid) ]
+            self.regions = [ pwlfit.region.Region(lo=0, hi=self.grid.ngrid-1) ]
 
         # Enforce min/max region sizes.
 
@@ -128,20 +145,3 @@ class PWLinearFitter:
         # Prune the final fit to remove the least significant knots if necessary
 
         return self.fit
-
-    def saveConfig(self, filename: Union[str,Path]) -> None:
-
-        with open(filename, 'w') as f:
-            yaml.dump(asdict(self.config), f, sort_keys=False)
-
-    @staticmethod
-    def loadConfig(filename: Union[str,Path]) -> PWLinearFitConfig:
-
-        with open(filename, 'r') as f:
-            config = yaml.safe_load(f)
-        return PWLinearFitConfig(
-            options=PWLinearFitOptions(**config.get('options', {})),
-            regions=FindRegionsConfig(**config.get('regions', {})),
-            continuous=PrunedFitContinuousConfig(**config.get('continuous', {})),
-            discontinuous=PrunedFitDiscontinuousConfig(**config.get('discontinuous', {})),
-            final=FinalFitConfig(**config.get('final', {})))
