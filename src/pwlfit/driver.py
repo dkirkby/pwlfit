@@ -28,6 +28,7 @@ class FindRegionsConfig:
     chisq_window_size: int = 19
     chisq_poly_order: int = 1
     smooth_chisq_cut: float = 4.0
+    max_region_knots: int = 64
 
 @dataclass
 class PrunedFitContinuousConfig:
@@ -101,7 +102,8 @@ class PWLinearFitter:
             self.chisq_median, self.chisq_smooth, self.regions = pwlfit.region.findRegions(
                 self.coarse_fit, self.grid, inset=rconf.region_inset,
                 pad=rconf.region_pad, chisq_cut=rconf.smooth_chisq_cut,
-                window_size=rconf.chisq_window_size, poly_order=rconf.chisq_poly_order)
+                window_size=rconf.chisq_window_size, poly_order=rconf.chisq_poly_order,
+                verbose=rconf.verbose)
             # Verbose reporting
             if opts.verbose or rconf.verbose:
                 print(f'Found {len(self.regions)} regions with ' +
@@ -113,7 +115,10 @@ class PWLinearFitter:
             # Create a single region covering the entire grid
             self.regions = [ pwlfit.region.Region(lo=0, hi=self.grid.ngrid-1) ]
 
-        # Enforce min/max region sizes.
+        # Split large regions in order to limit quadratic running time
+        if rconf.max_region_knots > 0:
+            self.regions = pwlfit.region.splitRegions(
+                self.regions, rconf.max_region_knots, rconf.verbose)
 
         # Prune each region independently.
         pconf = self.config.continuous if opts.use_continuous_pruned_fit else self.config.discontinuous
