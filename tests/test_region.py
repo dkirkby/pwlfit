@@ -5,13 +5,18 @@ import numpy as np
 from pwlfit.util import read_sample_data
 from pwlfit.grid import Grid
 from pwlfit.fit import fitFixedKnotsContinuous
-from pwlfit.region import findRegions, Region
+from pwlfit.region import findRegions, insertKnots, Region
 
 
-class TestRegion(unittest.TestCase):
+class TestRegions(unittest.TestCase):
 
-    def test_findRegions(self):
+    def testInsertKnots(self):
+        self.assertEqual(insertKnots(i1=5, i2=10, max_span=7), [ ])
+        self.assertEqual(insertKnots(i1=5, i2=10, max_span=5), [ ])
+        self.assertEqual(insertKnots(i1=5, i2=10, max_span=3), [ 8 ])
+        self.assertEqual(insertKnots(i1=5, i2=10, max_span=2), [ 7, 9 ])
 
+    def testFindRegions(self):
         xdata, ydata, ivar = read_sample_data('C')
         grid = Grid(xdata, ngrid=2049, transform='log')
         iknots = np.arange(0, grid.ngrid, 256)
