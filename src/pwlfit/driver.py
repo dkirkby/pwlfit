@@ -1,6 +1,7 @@
 from dataclasses import dataclass, asdict, field
 from typing import Callable, Union
 from pathlib import Path
+import time
 
 import yaml
 
@@ -92,6 +93,7 @@ class PWLinearFitter:
 
     def __call__(self, y: ArrayLike, ivar: ArrayLike) -> Union[None, pwlfit.fit.FitResult]:
 
+        start = time.time()
         opts = self.config.options
         rconf = self.config.regions
         if opts.find_regions:
@@ -148,5 +150,9 @@ class PWLinearFitter:
         self.fit = pwlfit.fit.fitFixedKnotsContinuous(y, ivar, self.grid, iknots=iknots, fit=fconf.eval_fit)
 
         # Prune the final fit to remove the least significant knots if necessary
+
+        self.elapsed = time.time() - start
+        if opts.verbose:
+            print(f'PWLinearFitter completed in {1e3*self.elapsed:.1f} ms')
 
         return self.fit
