@@ -109,6 +109,45 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
     return chisq_median, chisq_smooth, merged
 
 
+def insertKnots(i1: int, i2: int, ninsert: int = 0, max_span: int = 0,
+                verbose: bool = False) -> List[int]:
+    """Insert knots into [i1,i2] that are equally spaced. The number of knots to
+    insert is either specified by ninsert or calculated from the max_span.
+
+    Parameters
+    ----------
+    i1 : int
+        The starting index of the region.
+    i2 : int
+        The ending index of the region.
+    ninsert : int
+        The number of knots to insert. If 0, the number is calculated from the max_span.
+    max_span : int
+        The maximum span between knots. Ignored if ninsert is specified.
+    verbose : bool
+        If True, print additional information about the knots being inserted.
+
+    Returns
+    -------
+    List[int]
+        A list of knot indices to be inserted into the region (not including i1 and i2).
+    """
+    iknots = [ ]
+    if ninsert <= 0 and max_span <= 0:
+        raise ValueError('Either ninsert or max_span must be > 0')
+    if ninsert == 0 and i2 > i1:
+        # Calculate the number of knots to insert based on the max_span
+        ninsert = int(np.ceil((i2 - i1) / max_span)) - 1
+    if ninsert > 0:
+        # Calculate the floating point spacing between knots
+        delta = (i2 - i1) / (ninsert + 1)
+        # Round each inserted knot to its nearest integer
+        iknots = [ i1 + int(np.round((j + 1) * delta)) for j in range(ninsert) ]
+        if verbose:
+            print(f'Inserting {ninsert} knots {iknots} into [{i1},{i2}] with max_span {max_span}')
+    return iknots
+
+
 def splitRegions(regions_in: List[Region], max_knots: int, verbose: bool = False) -> List[Region]:
     """
     Split regions that exceed the maximum number of knots into smaller regions.
@@ -130,38 +169,24 @@ def splitRegions(regions_in: List[Region], max_knots: int, verbose: bool = False
         if nknots <= max_knots:
             regions.append(region)
         else:
-            nsplit = int(np.ceil(nknots / max_knots))
-            rsize = int(np.round(nknots / nsplit))
-            if verbose:
-                print(f'Splitting [{region.lo},{region.hi}] into {nsplit} regions of size {rsize}')
+            breaks = insertKnots(region.lo, region.hi, max_span=max_knots, verbose=verbose)
             new_regions = [ ]
-            for i in range(nsplit - 1):
-                ilo = region.lo + i * rsize
-                ihi = region.lo + (i + 1) * rsize
-                new_regions.append(Region(lo=ilo, hi=ihi))
+            iprev = region.lo
+            for i in breaks:
+                new_regions.append(Region(lo=iprev, hi=i))
+                iprev = i
             # Ensure the last region captures all remaining points
             new_regions.append(Region(lo=new_regions[-1].hi, hi=region.hi))
+            if verbose:
+                print(f'Split [{region.lo},{region.hi}] at {breaks} into {new_regions}')
             # Replace the original region with the new regions
             regions.extend(new_regions)
     return regions
 
 
-def insertKnots(i1: int, i2: int, max_span: int, verbose: bool = False) -> List[int]:
-    """Insert knots to fit the smooth trend outside of any region.
-    """
-    iknots = [ ]
-    ninsert = int(np.ceil((i2 - i1) / max_span)) - 1
-    if ninsert > 0:
-        iknots = [ i1 + (j + 1) * max_span for j in range(ninsert) ]
-        if verbose:
-            print(f'Inserting {ninsert} knots {iknots} into [{i1},{i2}] with max_span {max_span}')
-        return iknots
-    else:
-        return [ ]
-
-
 def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
-                   max_spacing_factor: int = 9, verbose: bool = False) -> List[int]:
+                   max_spacing_factor: int = 9, min_knots: int = 3,
+                   verbose: bool = False) -> List[int]:
     """Combine regions into a list of knots for the final fit.
     """
     max_span = int(np.floor((grid.ngrid - 1 ) / (max_spacing_factor - 1)))
@@ -171,15 +196,19 @@ def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
     iknots = [ ]
     if regions[0].lo > 0:
         iknots.append(0)  # Always start with the first knot at the beginning of the grid
-        iknots.extend(insertKnots(0, regions[0].lo, max_span, verbose))
+        iknots.extend(insertKnots(0, regions[0].lo, max_span=max_span, verbose=verbose))
 
     for iregion, region in enumerate(regions):
         ilo, ihi = region.lo, region.hi
         if iregion > 0:
             # Insert knots for continuum fit before this region, if necessary
-            iknots.extend(insertKnots(iprev, ilo, max_span, verbose))
+            iknots.extend(insertKnots(iprev, ilo, max_span=max_span, verbose=verbose))
         # Add the pruned knots for this region
         region_knots = region.fit.iknots if region.fit is not None else np.arange(ilo, ihi + 1)
+        # Ensure at least min_knots are used in the region if possible
+        if len(region_knots) < min_knots and ihi - ilo >= min_knots:
+            added_knots = insertKnots(ilo, ihi, ninsert=min_knots - 2, verbose=verbose)
+            region_knots = np.array([ilo] + added_knots + [ihi])
         if verbose:
             print(f'Adding {len(region_knots)} knots {region_knots} for region {iregion} [{ilo},{ihi}]')
         if len(iknots) > 0 and region_knots[0] == iknots[-1]:
@@ -190,7 +219,7 @@ def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
     # Insert knots for continuum fit after the last region, if necessary
     ilast = grid.ngrid - 1
     if iprev < ilast:
-        iknots.extend(insertKnots(iprev, ilast, max_span, verbose))
+        iknots.extend(insertKnots(iprev, ilast, max_span=max_span, verbose=verbose))
         iknots.append(ilast) # Always end with the final knot at the end of the grid
 
     return iknots

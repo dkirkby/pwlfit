@@ -10,11 +10,29 @@ from pwlfit.region import findRegions, insertKnots, Region
 
 class TestRegions(unittest.TestCase):
 
+    def testInsertMaxSpan(self):
+        i1 = 5
+        for max_span in range(2, 10):
+            for i2 in range(i1+1, 100):
+                inserted = insertKnots(i1, i2, max_span=max_span)
+                all = [i1] + inserted + [i2]
+                diff = np.diff(all)
+                self.assertTrue(np.all((diff > 0) & (diff <= max_span)))
+
+    def testInsertNInsert(self):
+        i1 = 5
+        for i2 in range(i1+2, 100):
+            for ninsert in range(1, i2 - i1):
+                inserted = insertKnots(i1, i2, ninsert=ninsert)
+                self.assertEqual(len(inserted), ninsert)
+                diff = np.diff([i1] + inserted + [i2])
+                self.assertTrue(np.all(diff > 0))
+
     def testInsertKnots(self):
         self.assertEqual(insertKnots(i1=5, i2=10, max_span=7), [ ])
         self.assertEqual(insertKnots(i1=5, i2=10, max_span=5), [ ])
-        self.assertEqual(insertKnots(i1=5, i2=10, max_span=3), [ 8 ])
-        self.assertEqual(insertKnots(i1=5, i2=10, max_span=2), [ 7, 9 ])
+        self.assertEqual(insertKnots(i1=5, i2=10, max_span=3), [ 7 ])
+        self.assertEqual(insertKnots(i1=5, i2=10, max_span=2), [ 7, 8 ])
 
     def testFindRegions(self):
         xdata, ydata, ivar = read_sample_data('C')
