@@ -5,6 +5,7 @@ import json
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+import pwlfit.data
 import pwlfit.grid
 from pwlfit.fit import Float64NDArray, Int64NDArray, checkIKnots
 
@@ -40,7 +41,7 @@ def read_sample_data(sampleID: str) -> tuple:
     """
     if sampleID not in ('A', 'B', 'C'):
         raise ValueError("sampleID must be one of 'A', 'B', or 'C'.")
-    txt = read_text('pwlfit.data', f'sample{sampleID}.json')
+    txt = read_text(pwlfit.data, f'sample{sampleID}.json')
     data = json.loads(txt)
     xdata = np.array(data['x'], dtype=np.float64)
     # ydata might contain null values in json which are read as None.
