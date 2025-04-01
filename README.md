@@ -36,4 +36,4 @@ to produce this plot:
 
 ![Fit to sample A data](examples/Quickstart-sampleA.png)
 
-For more details see the [Quickstart notebook](examples/Quickstart.ipynb).
+For more details see the Quickstart notebook: [readonly](examples/Quickstart.ipynb) or [live (via google colab)](https://colab.research.google.com/github/dkirkby/pwlfit/blob/main/examples/Quickstart.ipynb).
