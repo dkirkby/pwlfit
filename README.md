@@ -33,6 +33,7 @@ plt.plot(x, y, '.')
 plt.plot(fit.xknots, fit.yknots, 'o-');
 ```
 to produce this plot:
-![examples/Quickstart-sampleA.png]
+
+![Fit to sample A data](examples/Quickstart-sampleA.png)
 
 For more details see the [Quickstart notebook](examples/Quickstart.ipynb).
