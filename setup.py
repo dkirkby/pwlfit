@@ -21,6 +21,14 @@ setuptools.setup(
     },
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
+    include_package_data=True,
+    package_data={
+        "pwlfit.data": [
+            "sampleA.json",
+            "sampleB.json",
+            "sampleC.json",
+        ],
+    },
     classifiers=[
         # see https://pypi.org/classifiers/
         "Development Status :: 4 - Beta",
