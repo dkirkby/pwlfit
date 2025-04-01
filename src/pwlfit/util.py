@@ -1,5 +1,5 @@
 from typing import NamedTuple, Union
-from importlib_resources import files
+from importlib.resources import read_text
 import json
 
 import numpy as np
@@ -40,7 +40,7 @@ def read_sample_data(sampleID: str) -> tuple:
     """
     if sampleID not in ('A', 'B', 'C'):
         raise ValueError("sampleID must be one of 'A', 'B', or 'C'.")
-    txt = files('pwlfit.data').joinpath(f'sample{sampleID}.json').read_text()
+    txt = read_text('pwlfit.data', f'sample{sampleID}.json')
     data = json.loads(txt)
     xdata = np.array(data['x'], dtype=np.float64)
     # ydata might contain null values in json which are read as None.
