@@ -16,9 +16,9 @@ import pwlfit.util
 
 @dataclass
 class PWLinearFitOptions:
-    verbose: bool = False
+    verbose: bool = True
     find_regions: bool = False
-    use_continuous_pruned_fit: bool = True
+    use_continuous_pruned_fit: bool = False
 
 @dataclass
 class FindRegionsConfig:
@@ -28,8 +28,8 @@ class FindRegionsConfig:
     region_pad: int = 3
     chisq_window_size: int = 19
     chisq_poly_order: int = 1
-    smooth_chisq_cut: float = 4.0
-    max_region_knots: int = 64
+    smooth_chisq_cut: float = 3.5
+    max_region_knots: int = 256
 
 @dataclass
 class PrunedFitContinuousConfig:
@@ -146,10 +146,11 @@ class PWLinearFitter:
             self.regions, self.grid, max_spacing_factor=fconf.max_spacing_factor,
             min_knots=fconf.min_region_knots, verbose=fconf.verbose)
         if opts.verbose or fconf.verbose:
-            print(f'Final fit uses {len(iknots)} knots: {iknots}')
+            print(f'Final fit uses {len(iknots)} knots')
 
         # Perform the final fit
-        self.fit = pwlfit.fit.fitFixedKnotsContinuous(y, ivar, self.grid, iknots=iknots, fit=fconf.eval_fit)
+        self.fit = pwlfit.fit.fitFixedKnotsContinuous(
+            y, ivar, self.grid, iknots=iknots, fit=fconf.eval_fit)
 
         # Prune the final fit to remove the least significant knots if necessary
 
