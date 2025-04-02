@@ -27,21 +27,21 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-    publish-to-pypi:
-      name: Publish to PyPI
-      needs:
-        - build
-      runs-on: ubuntu-latest
-      environment:
-        name: pypi
-        url: https://pypi.org/p/pwlfit
-      permissions:
-        id-token: write
-      steps:
-        - name: Download the binary wheel and source tarball
-          uses: actions/download-artifact@v4
-          with:
-            name: python-package-distributions
-            path: dist/
-        - name: Publish distribution to PyPI
-          uses: pypa/gh-action-pypi-publish@release/v1
+  publish-to-pypi:
+    name: Publish to PyPI
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pwlfit
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the binary wheel and source tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Publish distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
