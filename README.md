@@ -34,6 +34,6 @@ plt.plot(fit.xknots, fit.yknots, 'o-');
 ```
 to produce this plot:
 
-![Fit to sample A data](examples/Quickstart-sampleA.png)
+![Fit to sample A data](https://github.com/dkirkby/pwlfit/blob/main/examples/Quickstart-sampleA.png?raw=true)
 
-For more details see the Quickstart notebook: [readonly](examples/Quickstart.ipynb) or [live (via google colab)](https://colab.research.google.com/github/dkirkby/pwlfit/blob/main/examples/Quickstart.ipynb).
+For more details see the Quickstart notebook: [readonly](https://github.com/dkirkby/pwlfit/blob/main/examples/Quickstart.ipynb) or [live (via google colab)](https://colab.research.google.com/github/dkirkby/pwlfit/blob/main/examples/Quickstart.ipynb).
