@@ -81,3 +81,20 @@ class Grid:
         self.breaks[-1] = len(self.xdata)
         if not np.all(np.diff(self.breaks) > 0):
             raise ValueError("Must be at least one data point between grid points.")
+
+    def asdict(self, precision: int = 3) -> dict:
+        """
+        Return a dictionary representation of the grid.
+
+        Parameters
+        ----------
+        precision (int): The number of decimal places to round the xgrid and sgrid values.
+            Default is 3.
+
+        Returns
+        -------
+        dict: A dictionary with keys 'xgrid' and 'transform'.
+        """
+        return {
+            "xgrid": np.round(self.xgrid, precision).tolist(),
+        }

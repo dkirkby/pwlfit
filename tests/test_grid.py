@@ -54,6 +54,22 @@ class TestGrid(unittest.TestCase):
         grid = Grid(xdata, xgrid=xgrid, ngrid=len(xgrid))
         self.verify_breaks(grid)
 
+    def test_asdict(self):
+        xdata = np.linspace(0, 10, 101)
+        grid = Grid(xdata, ngrid=11)
+        grid_dict = grid.asdict()
+        self.assertEqual(
+            grid_dict["xgrid"],
+            [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
+
+    def test_asdict_log(self):
+        xdata = np.linspace(1, 2, 101)
+        grid = Grid(xdata, ngrid=5, transform='log')
+        grid_dict = grid.asdict(precision=3)
+        self.assertEqual(
+            grid_dict["xgrid"],
+            [1.0, 1.189, 1.414, 1.682, 2.0])
+
 
 if __name__ == "__main__":
     unittest.main()
