@@ -55,6 +55,12 @@ class FitResult(NamedTuple):
     yfit: Union[None, Float64NDArray] = None
     chisq: Union[None, Float64NDArray] = None
 
+    def asdict(self, precision: int = 4) -> dict:
+        return dict(
+            iknots = self.iknots.tolist(),
+            yknots = np.round(self.yknots, precision).tolist(),
+        )
+
 
 class CummulativeSums(NamedTuple):
     Sw: Float64NDArray

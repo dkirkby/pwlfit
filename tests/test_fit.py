@@ -95,6 +95,14 @@ class TestFixedKnotsContinuous(unittest.TestCase):
         # Check that the fitted values are within the expected range
         self.assertTrue((np.mean(fit.chisq) > 0.9) and (np.mean(fit.chisq) < 1.1))
 
+    def testFitResultAsDict(self):
+        fit = fitFixedKnotsContinuous(self.D.ydata, self.D.ivar, self.D.grid, iknots=self.D.iknots)
+        fit_dict = fit.asdict(precision=2)
+        self.assertEqual(fit_dict["iknots"], self.D.iknots.tolist())
+        self.assertEqual(
+            fit_dict["yknots"],
+            [0.66, 0.78, 0.03, -0.5, 0.63, -0.57, 0.48, 0.26, 0.86, -0.53])
+
     def testPartialRange(self):
         iknots = self.D.iknots[2:-1]
         ndata = self.D.grid.breaks[iknots[-1]] - self.D.grid.breaks[iknots[0]]
