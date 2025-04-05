@@ -193,6 +193,9 @@ def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
     if verbose:
         print(f'Combining {len(regions)} regions with max_span {max_span}')
 
+    if len(regions) == 0:
+        return insertKnots(0, grid.ngrid - 1, max_span=max_span, verbose=verbose)
+
     iknots = [ ]
     if regions[0].lo > 0:
         iknots.append(0)  # Always start with the first knot at the beginning of the grid
