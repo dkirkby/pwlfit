@@ -139,10 +139,14 @@ def segmentFit(i1: int, i2: int, cumSums: CummulativeSums, eps: float = 1e-10) -
         b = (Sw * Sxy - Sx * Sy) / denom
         a = (Sy - b * Sx) / Sw
         chisq = Syy - a * Sy - b * Sxy
-    else:
+    elif Sw > 0:
         a = Sy / Sw
         b = 0
         chisq = Syy - a * Sy
+    else:
+        a = 0
+        b = 0
+        chisq = 0
     return SegmentFit(a=a, b=b, chisq=chisq)
 
 
