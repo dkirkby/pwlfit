@@ -5,7 +5,7 @@ import numpy as np
 from pwlfit.util import read_sample_data
 from pwlfit.grid import Grid
 from pwlfit.fit import fitFixedKnotsContinuous
-from pwlfit.region import findRegions, insertKnots, Region
+from pwlfit.region import findRegions, insertKnots, combineRegions, Region
 
 
 class TestRegions(unittest.TestCase):
@@ -47,6 +47,22 @@ class TestRegions(unittest.TestCase):
         self.assertEqual(regions[2], Region(lo=1573, hi=1595))
         self.assertTrue(np.allclose(np.median(chisq_smooth), chisq_median))
         self.assertTrue(np.allclose(chisq_median, 1.066, atol=1e-3, rtol=1e-4))
+
+    def testCombineRegions(self):
+        n = 10
+        grid = Grid(np.linspace(0, 1, 10), ngrid=n+1)
+        self.assertEqual(
+            combineRegions([Region(0,n)], grid, max_spacing_factor=5).tolist(),
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.assertEqual(
+            combineRegions([Region(n//2,n//2+1)], grid, max_spacing_factor=5).tolist(),
+            [0, 2, 3, 5, 6, 8, 10])
+        self.assertEqual(
+            combineRegions([Region(n//2,n//2+1)], grid, max_spacing_factor=4).tolist(),
+            [0, 2, 5, 6, 8, 10])
+        self.assertEqual(
+            combineRegions([Region(n//4,n//4+1), Region(n//2,n//2+1)], grid, max_spacing_factor=4).tolist(),
+            [0, 2, 3, 5, 6, 8, 10])
 
 
 if __name__ == "__main__":

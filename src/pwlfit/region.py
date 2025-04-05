@@ -186,15 +186,43 @@ def splitRegions(regions_in: List[Region], max_knots: int, verbose: bool = False
 
 def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
                    max_spacing_factor: int = 9, min_knots: int = 3,
-                   verbose: bool = False) -> List[int]:
+                   verbose: bool = False) -> NDArray[np.int64]:
     """Combine regions into a list of knots for the final fit.
+
+    Parameters
+    ----------
+    regions : List[Region]
+        The list of regions to be combined. If a region has a fit attribute, only
+        the knots from that fit will be used. Otherwise, all knots in the region
+        will be used.
+    grid : Grid
+        The grid of possible knot locations to use for the final fit. Only the ngrid
+        attribute is used.
+    max_spacing_factor : int
+        The maximum spacing factor between knots. This is used to determine the
+        maximum span between knots when inserting new knots, calcualted as
+        int(floor((ngrid - 1 ) / (max_spacing_factor - 1))). For example, ngrid=101
+        and max_spacing_factor=11 gives a max_span of 10.
+    min_knots : int
+        The minimum number of knots to use in a region. If the number of knots
+        in a region is less than this value, additional knots will be inserted.
+    verbose : bool
+        If True, print additional information about the regions being combined.
+
+    Returns
+    -------
+    NDArray[np.int64]
+        A list of knot indices for the final fit. The first and last knots of
+        the grid are always included.
     """
     max_span = int(np.floor((grid.ngrid - 1 ) / (max_spacing_factor - 1)))
     if verbose:
         print(f'Combining {len(regions)} regions with max_span {max_span}')
 
     if len(regions) == 0:
-        return insertKnots(0, grid.ngrid - 1, max_span=max_span, verbose=verbose)
+        return np.array(
+            insertKnots(0, grid.ngrid - 1, max_span=max_span, verbose=verbose),
+            dtype=np.int64)
 
     iknots = [ ]
     if regions[0].lo > 0:
@@ -225,4 +253,4 @@ def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
         iknots.extend(insertKnots(iprev, ilast, max_span=max_span, verbose=verbose))
         iknots.append(ilast) # Always end with the final knot at the end of the grid
 
-    return iknots
+    return np.array(iknots, dtype=np.int64)
