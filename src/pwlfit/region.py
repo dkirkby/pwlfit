@@ -171,7 +171,7 @@ def splitRegions(regions_in: List[Region], max_knots: int, verbose: bool = False
         else:
             breaks = insertKnots(region.lo, region.hi, max_span=max_knots, verbose=verbose)
             if len(breaks) == 0:
-                print('Warning: no breaks found for region {region} with max_knots={max_knots}')
+                print(f'Warning: no breaks found for region {region} with max_knots={max_knots} nknots={nknots}')
             new_regions = [ ]
             iprev = region.lo
             for i in breaks:
