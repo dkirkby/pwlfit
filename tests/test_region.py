@@ -52,17 +52,25 @@ class TestRegions(unittest.TestCase):
         n = 10
         grid = Grid(np.linspace(0, 1, 10), ngrid=n+1)
         self.assertEqual(
-            combineRegions([Region(0,n)], grid, max_spacing_factor=5).tolist(),
+            combineRegions([Region(0,n)], grid, min_total_knots=5).tolist(),
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         self.assertEqual(
-            combineRegions([Region(n//2,n//2+1)], grid, max_spacing_factor=5).tolist(),
+            combineRegions([Region(n//2,n//2+1)], grid, min_total_knots=5).tolist(),
             [0, 2, 3, 5, 6, 8, 10])
         self.assertEqual(
-            combineRegions([Region(n//2,n//2+1)], grid, max_spacing_factor=4).tolist(),
+            combineRegions([Region(n//2,n//2+1)], grid, min_total_knots=4).tolist(),
             [0, 2, 5, 6, 8, 10])
         self.assertEqual(
-            combineRegions([Region(n//4,n//4+1), Region(n//2,n//2+1)], grid, max_spacing_factor=4).tolist(),
+            combineRegions([Region(n//4,n//4+1), Region(n//2,n//2+1)], grid, min_total_knots=4).tolist(),
             [0, 2, 3, 5, 6, 8, 10])
+
+    def testCombineNoRegions(self):
+        # verify that when there are no regions, combineRegions creates min_total_knots.
+        n = 10
+        grid = Grid(np.linspace(0, 1, 100), ngrid=n+1)
+        for m in range(2, 10):
+            iknots = combineRegions([], grid, min_total_knots=m)
+            self.assertEqual(len(iknots), m)
 
 
 if __name__ == "__main__":

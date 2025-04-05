@@ -47,7 +47,7 @@ class PrunedFitDiscontinuousConfig:
 @dataclass
 class FinalFitConfig:
     verbose: bool = False
-    max_spacing_factor: int = 9
+    min_total_knots: int = 9
     min_region_knots: int = 3
     eval_fit: bool = False
 
@@ -143,8 +143,8 @@ class PWLinearFitter:
         # Combined pruned regions into a global list of knots to use for the final fit
         fconf = self.config.final
         iknots = pwlfit.region.combineRegions(
-            self.regions, self.grid, max_spacing_factor=fconf.max_spacing_factor,
-            min_knots=fconf.min_region_knots, verbose=fconf.verbose)
+            self.regions, self.grid, min_total_knots=fconf.min_total_knots,
+            min_region_knots=fconf.min_region_knots, verbose=fconf.verbose)
         if opts.verbose or fconf.verbose:
             print(f'Final fit uses {len(iknots)} knots')
 

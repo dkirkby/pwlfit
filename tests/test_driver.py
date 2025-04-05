@@ -29,6 +29,8 @@ class TestDriver(unittest.TestCase):
         conf.options.find_regions = False
         fitter = PWLinearFitter(grid, conf)
         result = fitter(y, ivar)
+        self.assertEqual(type(result.iknots), np.ndarray)
+        self.assertEqual(result.iknots.dtype, np.int64)
 
     def testDriverWithRegions(self):
         x, y, ivar = read_sample_data('C')
@@ -37,6 +39,8 @@ class TestDriver(unittest.TestCase):
         conf.options.find_regions = True
         fitter = PWLinearFitter(grid, conf)
         result = fitter(y, ivar)
+        self.assertEqual(type(result.iknots), np.ndarray)
+        self.assertEqual(result.iknots.dtype, np.int64)
 
     def testDriverNoRegions(self):
         # Test the case where there are no regions of large smoothed chisq
@@ -50,6 +54,8 @@ class TestDriver(unittest.TestCase):
         config.regions.verbose = True
         fitter = PWLinearFitter(grid, config)
 
-        fit = fitter(ydata, ivar)
-        self.assertEqual(len(fit.iknots), config.final.max_spacing_factor)
-        self.assertTrue(np.all(fit.yknots == 0))
+        result = fitter(ydata, ivar)
+        self.assertEqual(len(result.iknots), config.final.min_total_knots)
+        self.assertTrue(np.all(result.yknots == 0))
+        self.assertEqual(type(result.iknots), np.ndarray)
+        self.assertEqual(result.iknots.dtype, np.int64)

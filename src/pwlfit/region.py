@@ -144,7 +144,7 @@ def insertKnots(i1: int, i2: int, ninsert: int = 0, max_span: int = 0,
         # Round each inserted knot to its nearest integer
         iknots = [ i1 + int(np.round((j + 1) * delta)) for j in range(ninsert) ]
         if verbose:
-            print(f'Inserting {ninsert} knots {iknots} into [{i1},{i2}] with max_span {max_span}')
+            print(f'Inserting {ninsert} knots {iknots} into [{i1},{i2}] with ninsert={ninsert} max_span={max_span}')
     return iknots
 
 
@@ -185,7 +185,7 @@ def splitRegions(regions_in: List[Region], max_knots: int, verbose: bool = False
 
 
 def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
-                   max_spacing_factor: int = 9, min_knots: int = 3,
+                   min_total_knots: int = 10, min_region_knots: int = 3,
                    verbose: bool = False) -> NDArray[np.int64]:
     """Combine regions into a list of knots for the final fit.
 
@@ -198,12 +198,12 @@ def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
     grid : Grid
         The grid of possible knot locations to use for the final fit. Only the ngrid
         attribute is used.
-    max_spacing_factor : int
-        The maximum spacing factor between knots. This is used to determine the
-        maximum span between knots when inserting new knots, calcualted as
-        int(floor((ngrid - 1 ) / (max_spacing_factor - 1))). For example, ngrid=101
-        and max_spacing_factor=11 gives a max_span of 10.
-    min_knots : int
+    min_total_knots : int
+        The minimum total number of knots to return. If there are no regions provided,
+        this will be the number of knots returned. Otherwise, the maximum spacing
+        between knots inserted between regions is calculated from this value as
+        int(floor((ngrid - 1 ) / (min_total_knots - 1))).
+    min_region_knots : int
         The minimum number of knots to use in a region. If the number of knots
         in a region is less than this value, additional knots will be inserted.
     verbose : bool
@@ -215,14 +215,18 @@ def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
         A list of knot indices for the final fit. The first and last knots of
         the grid are always included.
     """
-    max_span = int(np.floor((grid.ngrid - 1 ) / (max_spacing_factor - 1)))
+    if len(regions) == 0:
+        ninsert = min_total_knots - 2
+        if verbose:
+            print(f'No regions found, inserting {ninsert} knots')
+        inserted = insertKnots(0, grid.ngrid - 1, ninsert=ninsert, verbose=verbose) if ninsert > 0 else []
+        return np.array([0] + inserted + [grid.ngrid - 1], dtype=np.int64)
+
+    if min_total_knots < 2:
+        raise ValueError(f'min_total_knots must be >= 2, got {min_total_knots}')
+    max_span = int(np.floor((grid.ngrid - 1 ) / (min_total_knots - 1)))
     if verbose:
         print(f'Combining {len(regions)} regions with max_span {max_span}')
-
-    if len(regions) == 0:
-        return np.array(
-            insertKnots(0, grid.ngrid - 1, max_span=max_span, verbose=verbose),
-            dtype=np.int64)
 
     iknots = [ ]
     if regions[0].lo > 0:
@@ -236,9 +240,9 @@ def combineRegions(regions: List[Region], grid: pwlfit.grid.Grid,
             iknots.extend(insertKnots(iprev, ilo, max_span=max_span, verbose=verbose))
         # Add the pruned knots for this region
         region_knots = region.fit.iknots if region.fit is not None else np.arange(ilo, ihi + 1)
-        # Ensure at least min_knots are used in the region if possible
-        if len(region_knots) < min_knots and ihi - ilo >= min_knots:
-            added_knots = insertKnots(ilo, ihi, ninsert=min_knots - 2, verbose=verbose)
+        # Ensure at least min_region_knots are used in the region if possible
+        if len(region_knots) < min_region_knots and ihi - ilo >= min_region_knots:
+            added_knots = insertKnots(ilo, ihi, ninsert=min_region_knots - 2, verbose=verbose)
             region_knots = np.array([ilo] + added_knots + [ihi])
         if verbose:
             print(f'Adding {len(region_knots)} knots {region_knots} for region {iregion} [{ilo},{ihi}]')
