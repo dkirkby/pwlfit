@@ -7,15 +7,16 @@ from typing import Generator, Union, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-import fitsio
-
 from pwlfit.grid import Grid
+from pwlfit.util import longest_zero_run
 from pwlfit.driver import PWLinearFitConfig, PWLinearFitter
+
 
 # Define types used below
 FloatArray = NDArray[Union[np.float32, np.float64]]
 GenTuple = Tuple[FloatArray, FloatArray, dict]
 GenType = Generator[GenTuple, None, None]
+
 
 # Define the wavelength grid used for DESI spectral reductions
 wmin, wmax, wdelta = 3600, 9824, 0.8
@@ -27,13 +28,20 @@ def getReduxGrid(ngrid: int = 2049, transform='log') -> Grid:
     return Grid(fullwave, ngrid=ngrid, transform=transform)
 
 
-def coaddedExposureGenerator(
+def getDefaultConfig(verbose: bool = True) -> PWLinearFitConfig:
+    config = PWLinearFitConfig()
+    config.options.verbose = verbose
+    config.options.find_regions = True
+    return config
+
+
+def coaddedExposure(
         night: int, expid: int,
-        path: Union[str, pathlib.Path],
+        basepath: Union[str, pathlib.Path],
         max_zero_run: int = 400, verbose: bool = False
         ) -> GenType:
     """
-    Generator for coadded DESI per-exposure spectra.
+    Generator for coadded DESI per-exposure spectra. Use with fitSpectra().
 
     Parameters
     ----------
@@ -41,7 +49,7 @@ def coaddedExposureGenerator(
         DESI night number in the format YYYYMMDD.
     expid : int
         DESI exposure ID.
-    path : str or Path
+    basepath : str or Path
         Path to the coadded spectra with a {night}/{expid} structure.
         Use /global/cfs/cdirs/desi/spectro/redux/{RELEASE}/exposures
         for release data at NERSC.
@@ -63,17 +71,18 @@ def coaddedExposureGenerator(
     try:
         import fitsio
     except ImportError:
-        raise RuntimeError("fitsio is required by coaddedExposureGenerator()")
+        raise RuntimeError("fitsio is required by coaddedExposure()")
 
     # Initialize coaddition result
     nwave = len(fullwave)
     wsum = np.zeros((500, nwave))
     wflux = np.zeros((500, nwave))
 
-    if not path.exists():
-        raise RuntimeError(f'Invalid path: {path}')
+    basepath = pathlib.Path(basepath)
+    if not basepath.exists():
+        raise RuntimeError(f'Invalid basepath: {basepath}')
     exptag = str(expid).zfill(8)
-    path = path / str(night) / exptag
+    path = basepath / str(night) / exptag
     if not path.exists():
         raise RuntimeError(f'invalid night/expid path: {path}')
 
@@ -114,7 +123,7 @@ def coaddedExposureGenerator(
         if np.any(sel):
             for idx in np.where(sel)[0]:
                 meta = dict(night=night, expid=expid,
-                            spec=spec, tgtid=tgtid[idx], fiber=fiber[idx])
+                            tgtid=int(tgtid[idx]), fiber=int(fiber[idx]))
                 yield flux[idx], wsum[idx], meta
 
 
@@ -131,7 +140,8 @@ def fitSpectra(generator: GenType, config: PWLinearFitConfig, grid: Grid,
     fitter = PWLinearFitter(grid, config)
 
     nfit = 0
-    result = metadata.extend(dict(
+    result = dict(metadata)
+    result.update(dict(
         # record the grid used
         grid=grid.asdict(),
         # record the config used
@@ -144,9 +154,9 @@ def fitSpectra(generator: GenType, config: PWLinearFitConfig, grid: Grid,
         if flux.ndim != 1 or flux.shape != ivar.shape:
             raise ValueError("flux and ivar must be 1D arrays of the same shape")
         if config.options.verbose:
-            print(f'Fitting spectrum [{idx}] with {spec_meta}')
+            print(f'Fitting spectrum {spec_meta}')
         try:
-            fit = fitter(flux[idx], ivar[idx])
+            fit = fitter(flux, ivar)
             # Calculate the mean flux from the coarse fit
             F0 = np.mean(fitter.coarse_fit.yknots)
             # Normalize the final fluxes to F0
