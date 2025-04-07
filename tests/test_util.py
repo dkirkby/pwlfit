@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from pwlfit.grid import Grid
-from pwlfit.util import generate_data, smooth_weighted_data, read_sample_data
+from pwlfit.util import generate_data, smooth_weighted_data, read_sample_data, longest_zero_run
 
 
 class TestGenerateData(unittest.TestCase):
@@ -65,6 +65,35 @@ class TestSampleData(unittest.TestCase):
             read_sample_data('X')
         with self.assertRaises(ValueError):
             read_sample_data('')
+
+
+class TestLongestRun(unittest.TestCase):
+
+    def testCount(self):
+        x = np.ones(100)
+        for n in range(10, 20):
+            x[15:15+n] = 0
+            self.assertEqual(longest_zero_run(x), n)
+
+    def testCountDouble(self):
+        x = np.ones(100)
+        for n in range(10, 20):
+            x[15:15+n] = 0
+            x[60:60+n] = 0
+            self.assertEqual(longest_zero_run(x), n)
+
+    def testAlternating(self):
+        x = np.ones(100)
+        x[::2] = 0
+        self.assertEqual(longest_zero_run(x), 1)
+
+    def testNoZeros(self):
+        x = np.ones(100)
+        self.assertEqual(longest_zero_run(x), 0)
+
+    def testEmpty(self):
+        x = np.array([])
+        self.assertEqual(longest_zero_run(x), 0)
 
 
 if __name__ == "__main__":

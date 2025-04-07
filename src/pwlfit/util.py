@@ -230,3 +230,32 @@ def smooth_weighted_data(y: ArrayLike, ivar: ArrayLike, grid: pwlfit.grid.Grid,
         ysmooth[i] = coeffs[0]
 
     return ysmooth
+
+
+def longest_zero_run(a: NDArray) -> int:
+    """Find the length of the longest contiguous run of zeros in a 1D array.
+    Useful to identify large gaps of missing data, where ivar==0.
+
+    Parameters
+    ----------
+    a : NDArray
+        Input array to search for runs of zeros.
+
+    Returns
+    -------
+    int
+        Length of the longest contiguous run of zeros in the input array.
+    """
+    # Create a boolean array where True indicates a zero.
+    is_zero = (a == 0)
+    # Pad with False on both ends to catch runs at the boundaries.
+    padded = np.concatenate(([False], is_zero, [False]))
+    # Convert boolean to integer (True -> 1, False -> 0) and compute differences.
+    diff = np.diff(padded.astype(int))
+    # A change from 0 to 1 marks the start of a run; 1 to 0 marks the end.
+    run_starts = np.where(diff == 1)[0]
+    run_ends = np.where(diff == -1)[0]
+    # The lengths of the runs are the differences between end and start indices.
+    if run_starts.size == 0:
+        return 0  # No zeros found.
+    return np.max(run_ends - run_starts)
