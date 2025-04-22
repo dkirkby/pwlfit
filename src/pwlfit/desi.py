@@ -12,17 +12,21 @@ from pwlfit.util import longest_zero_run
 from pwlfit.driver import PWLinearFitConfig, PWLinearFitter
 
 
-# Define types used below
+# Define types used below...
+# The flux and ivar values for each spectrum at 1D arrays of floats
 FloatArray = NDArray[Union[np.float32, np.float64]]
+# Each spectrum is specified as a tuple of (flux, ivar, meta)
+# where meta is a dictionary of spectrum metadata
 GenTuple = Tuple[FloatArray, FloatArray, dict]
+# We iterate over spectra using a generator that yields a GenTuple
 GenType = Generator[GenTuple, None, None]
 
 
-# Define the wavelength grid used for DESI spectral reductions
+# Define the wavelength grid used for DESI spectral reductions.
+# Units are Angstroms. Use getReduxGrid() to get a corresponding Grid object.
 wmin, wmax, wdelta = 3600, 9824, 0.8
 fullwave = np.round(np.arange(wmin, wmax + wdelta, wdelta), 1)
 cslice = {'b': slice(0, 2751), 'r': slice(2700, 5026), 'z': slice(4900, 7781)}
-
 
 def getReduxGrid(ngrid: int = 2049, transform='log') -> Grid:
     return Grid(fullwave, ngrid=ngrid, transform=transform)
@@ -61,12 +65,7 @@ def coaddedExposure(
 
     Yields
     ------
-    flux : FloatArray
-        Coadded spectrum flux.
-    ivar : FloatArray
-        Coadded spectrum inverse variance.
-    meta : dict
-        Metadata for the spectrum.
+    GenTuple
     """
     try:
         import fitsio
