@@ -43,7 +43,9 @@ def coaddedExposure(
         night: int, expid: int,
         basepath: Union[str, pathlib.Path],
         objtypes: List[str] = ['TGT'],
-        max_zero_run: int = 400, verbose: bool = False
+        max_zero_run: int = 400,
+        meta_names: List[str] = ['TARGETID', 'FIBER'],
+        verbose: bool = False
         ) -> GenType:
     """
     Generator for coadded DESI per-exposure spectra. Use with fitSpectra().
@@ -64,6 +66,10 @@ def coaddedExposure(
     max_zero_run : int
         Maximum length of consecutive zero ivars allowed before spectrum
         is rejected.
+    meta_names : list of strings
+        Names of fibermap columns to include in the per-spectrum metadata.
+        For details see
+        https://desidatamodel.readthedocs.io/en/24.9/DESI_SPECTRO_REDUX/SPECPROD/exposures/NIGHT/EXPID/cframe-CAMERA-EXPID.html#hdu5
     verbose : bool
         Print debug information when True.
 
@@ -115,18 +121,18 @@ def coaddedExposure(
         # Perform coaddition over bands
         flux = np.divide(wflux, wsum, out=np.zeros_like(wflux), where=wsum > 0)
 
-        fiber = fibermap['FIBER']
-        tgtid = fibermap['TARGETID']
-
         objtype = fibermap['OBJTYPE']
-        nzero = np.array([ longest_zero_run(wsum[i]) for i in range(len(fiber)) ])
+        nzero = np.array([ longest_zero_run(wsum[i]) for i in range(len(objtype)) ])
         sel = np.isin(objtype, objtypes) & (nzero < max_zero_run)
         if verbose:
             print(f'Found {np.sum(sel)} targets from {night}/{exptag} spec {spec}')
         if np.any(sel):
             for idx in np.where(sel)[0]:
-                meta = dict(night=night, expid=expid,
-                            tgtid=int(tgtid[idx]), fiber=int(fiber[idx]))
+                # Extract the requested metadata for this spectrum.
+                # We do not duplicate the night and expid here.
+                # Use .item() to convert numpy scalars to native Python types.
+                meta_values = [ val.item() for val in fibermap[idx][meta_names] ]
+                meta = dict(zip(meta_names, meta_values))
                 yield flux[idx], wsum[idx], meta
 
 
