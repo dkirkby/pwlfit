@@ -2,7 +2,7 @@ import pathlib
 import json
 import argparse
 import dataclasses
-from typing import Generator, Union, Tuple
+from typing import Generator, Union, Tuple, List
 
 import numpy as np
 from numpy.typing import NDArray
@@ -42,6 +42,7 @@ def getDefaultConfig(verbose: bool = True) -> PWLinearFitConfig:
 def coaddedExposure(
         night: int, expid: int,
         basepath: Union[str, pathlib.Path],
+        objtypes: List[str] = ['TGT'],
         max_zero_run: int = 400, verbose: bool = False
         ) -> GenType:
     """
@@ -57,6 +58,9 @@ def coaddedExposure(
         Path to the coadded spectra with a {night}/{expid} structure.
         Use /global/cfs/cdirs/desi/spectro/redux/{RELEASE}/exposures
         for release data at NERSC.
+    objtypes : list of strings
+        List of object types to include in the fit. Default is ['TGT'].
+        Possible values are TGT, SKY, NON, BAD.
     max_zero_run : int
         Maximum length of consecutive zero ivars allowed before spectrum
         is rejected.
@@ -111,12 +115,12 @@ def coaddedExposure(
         # Perform coaddition over bands
         flux = np.divide(wflux, wsum, out=np.zeros_like(wflux), where=wsum > 0)
 
-        objtype = fibermap['OBJTYPE']
         fiber = fibermap['FIBER']
         tgtid = fibermap['TARGETID']
-        nzero = np.array([ longest_zero_run(wsum[i]) for i in range(len(fiber)) ])
 
-        sel = (objtype == 'TGT') & (nzero < max_zero_run)
+        objtype = fibermap['OBJTYPE']
+        nzero = np.array([ longest_zero_run(wsum[i]) for i in range(len(fiber)) ])
+        sel = np.isin(objtype, objtypes) & (nzero < max_zero_run)
         if verbose:
             print(f'Found {np.sum(sel)} targets from {night}/{exptag} spec {spec}')
         if np.any(sel):
