@@ -95,6 +95,13 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
                     print(f'End {currentRegion}')
                 currentRegion = None
 
+    # if the final region extends to the end of the grid, record that now
+    if currentRegion is not None:
+        currentRegion.hi = grid.ngrid - 1 - inset
+        regions.append(currentRegion)
+        if verbose:
+            print(f'End {currentRegion}')
+
     # merge overlapping regions
     merged = regions[:1]
     for i in range(1, len(regions)):
