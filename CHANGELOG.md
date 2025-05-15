@@ -8,7 +8,14 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [0.3.0] - Unreleased
 
-No changes yet
+### Fixed
+- Fixed problem where a region extending to right edge is missed in findRegions.a
+
+### Changed
+- Use sigma clipped mean of (un-smoothed) coarse fit chisq instead of median of smoothed chisq in findRegions.
+
+### Added
+- Added regions config params scaled_cut and clip_nsigma.
 
 ## [0.2.0] - 2025-04-05
 
