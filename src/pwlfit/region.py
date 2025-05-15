@@ -8,6 +8,7 @@ import pwlfit.fit
 import pwlfit.grid
 
 import scipy.signal
+import scipy.stats
 
 
 @dataclass
@@ -18,8 +19,8 @@ class Region:
 
 
 def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
-                inset: int = 4, pad: int = 3, chisq_cut: float = 4,
-                window_size: int = 19, poly_order: int = 1, verbose: bool = False
+                inset: int = 4, pad: int = 3, chisq_cut: float = 4, scaled_cut: bool = False,
+                clip_nsigma: float = 3, window_size: int = 19, poly_order: int = 1, verbose: bool = False
                 ) -> Tuple[float, NDArray[np.float64], List[Region]]:
     """
     Find regions of the fit where the chisq is above a threshold that can be analyzed independently.
@@ -37,7 +38,11 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
         The number of grid points to add to the beginning and end of each region.
     chisq_cut : float
         The threshold for the chisq above which a region is considered significant.
-        Will be scaled by the median of the smoothed chisq.
+    scaled_cut : bool
+        If True, the chisq_cut is scaled by the sigma-clipped mean of the smoothed chisq.
+    clip_nsigma : float
+        The number of standard deviations to use for sigma clipping the chisq to calculate
+        its mean. Note that this does not affect the results unless scaled_cut is True.
     window_size : int
         The size of the Savitzky-Golay filter window to smooth the chisq. Must be odd.
     poly_order : int
@@ -66,12 +71,15 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
     # Inset must be at least big enough for the padding
     inset = max(inset, pad)
 
+    # Calculate the truncated mean of the chisq
+    clipped, _, _ = scipy.stats.sigmaclip(fit.chisq, low=clip_nsigma, high=clip_nsigma)
+    chisq_mean = np.mean(clipped)
+    if scaled_cut:
+        # Normalize the cut to the median smooth chisq
+        chisq_cut *= chisq_mean
+
     # Smooth chisq with Savitzky-Golay filter
     chisq_smooth = scipy.signal.savgol_filter(fit.chisq, window_size, poly_order)
-
-    # Normalize the cut to the median smooth chisq
-    chisq_median = np.median(chisq_smooth)
-    chisq_cut *= chisq_median
 
     # Build list of consecutive knots where the smooth chisq exceeds the cut,
     # with padding added
@@ -113,7 +121,7 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
         else:
             merged.append(regions[i])
 
-    return chisq_median, chisq_smooth, merged
+    return chisq_mean, chisq_smooth, merged
 
 
 def insertKnots(i1: int, i2: int, ninsert: int = 0, max_span: int = 0,

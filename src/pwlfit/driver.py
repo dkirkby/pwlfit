@@ -29,6 +29,8 @@ class FindRegionsConfig:
     chisq_window_size: int = 19
     chisq_poly_order: int = 1
     smooth_chisq_cut: float = 3.5
+    scaled_cut: bool = True
+    clip_nsigma: float = 3.0
     max_region_knots: int = 256
 
 @dataclass
@@ -89,7 +91,7 @@ class PWLinearFitter:
             self.coarse_iknots = [ k * spacing for k in range(ncoarse - 1) ] + [grid.ngrid - 1]
         else:
             self.coarse_fit = None
-            self.chisq_median = np.nan
+            self.chisq_mean = np.nan
             self.chisq_smooth = None
 
     def __call__(self, y: ArrayLike, ivar: ArrayLike) -> Union[None, pwlfit.fit.FitResult]:
@@ -102,15 +104,16 @@ class PWLinearFitter:
             self.coarse_fit = pwlfit.fit.fitFixedKnotsContinuous(
                 y, ivar, self.grid, iknots=self.coarse_iknots, fit=True)
             # Find regions of the data that deviate significantly from the smooth trend
-            self.chisq_median, self.chisq_smooth, self.regions = pwlfit.region.findRegions(
+            self.chisq_mean, self.chisq_smooth, self.regions = pwlfit.region.findRegions(
                 self.coarse_fit, self.grid, inset=rconf.region_inset,
                 pad=rconf.region_pad, chisq_cut=rconf.smooth_chisq_cut,
+                scaled_cut=rconf.scaled_cut, clip_nsigma=rconf.clip_nsigma,
                 window_size=rconf.chisq_window_size, poly_order=rconf.chisq_poly_order,
                 verbose=rconf.verbose)
             # Verbose reporting
             if opts.verbose or rconf.verbose:
                 print(f'Found {len(self.regions)} regions with ' +
-                      f'median smoothed chisq {self.chisq_median:.3f}')
+                      f'mean smoothed chisq {self.chisq_mean:.3f}')
             if rconf.verbose:
                 for i, region in enumerate(self.regions):
                     print(f'  region[{i}] lo={region.lo} hi={region.hi}')
