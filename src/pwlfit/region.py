@@ -18,20 +18,25 @@ class Region:
     fit: Union[None, pwlfit.fit.FitResult] = None
 
 
-def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
+def findRegions(y: NDArray[np.float64], ivar: NDArray[np.float64],
+                grid: pwlfit.grid.Grid, coarse_iknots: NDArray[np.int64],
                 inset: int = 4, pad: int = 3, chisq_cut: float = 4, scaled_cut: bool = False,
                 clip_nsigma: float = 3, window_size: int = 19, poly_order: int = 1, verbose: bool = False
-                ) -> Tuple[float, NDArray[np.float64], List[Region]]:
+                ) -> Tuple[pwlfit.fit.FitResult, float, NDArray[np.float64], List[Region]]:
     """
     Find regions of the fit where the chisq is above a threshold that can be analyzed independently.
 
     Parameters
     ----------
-    fit : FitResult
-        The result of a coarse fit to the data that captures the overall smooth structure.
-        Must have a valid chisq attribute.
+    y (np.ndarray):
+        The y values of the data to fit. Ignored when corresponding ivar=0.
+    ivar (np.ndarray):
+        The inverse variance of the data (1/sigma^2).
     grid : Grid
         The grid of possible knot locations to use for finding regions.
+    coarse_iknots (np.ndarray):
+        The indices of the knots in the grid or use for a coarse fit that captures
+        the overall smooth structure of the data.
     inset : int
         The number of grid points to ignore at the beginning and end of the grid.
     pad : int
@@ -52,6 +57,8 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
 
     Returns
     -------
+    FitResult
+        The result of a coarse fit to the data that captures the overall smooth structure.
     float
         The median of the smoothed chisq.
     NDArray[np.float64]
@@ -59,8 +66,6 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
     List[Region]
         The list of regions where the chisq is above the threshold.
     """
-    if fit.chisq is None:
-        raise ValueError('FitResult must have a valid chisq. Did you forget fit=True?')
     if 2 * inset >= grid.ngrid:
         raise ValueError(f'Invalid inset value {inset}')
     if pad < 0 or 2 * pad >= grid.ngrid:
@@ -68,18 +73,21 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
     if window_size % 2 == 0 or window_size < 0:
         raise ValueError(f'Invalid window size {window_size} (should be an odd integer > 0)')
 
+    # Perform a coarse fit to the data using the specified knots
+    coarse_fit = pwlfit.fit.fitFixedKnotsContinuous(y, ivar, grid, iknots=coarse_iknots, fit=True)
+
     # Inset must be at least big enough for the padding
     inset = max(inset, pad)
 
     # Calculate the truncated mean of the chisq
-    clipped, _, _ = scipy.stats.sigmaclip(fit.chisq, low=clip_nsigma, high=clip_nsigma)
+    clipped, _, _ = scipy.stats.sigmaclip(coarse_fit.chisq, low=clip_nsigma, high=clip_nsigma)
     chisq_mean = np.mean(clipped)
     if scaled_cut:
         # Normalize the cut to the median smooth chisq
         chisq_cut *= chisq_mean
 
     # Smooth chisq with Savitzky-Golay filter
-    chisq_smooth = scipy.signal.savgol_filter(fit.chisq, window_size, poly_order)
+    chisq_smooth = scipy.signal.savgol_filter(coarse_fit.chisq, window_size, poly_order)
 
     # Build list of consecutive knots where the smooth chisq exceeds the cut,
     # with padding added
@@ -121,7 +129,7 @@ def findRegions(fit: pwlfit.fit.FitResult, grid: pwlfit.grid.Grid,
         else:
             merged.append(regions[i])
 
-    return chisq_mean, chisq_smooth, merged
+    return coarse_fit, chisq_mean, chisq_smooth, merged
 
 
 def insertKnots(i1: int, i2: int, ninsert: int = 0, max_span: int = 0,

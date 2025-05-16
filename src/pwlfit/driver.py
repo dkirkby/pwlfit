@@ -88,7 +88,7 @@ class PWLinearFitter:
             # Initialize the knots to use for the coarse fit
             ncoarse = self.config.regions.num_coarse_knots
             spacing = int(round(grid.ngrid / (ncoarse - 1)))
-            self.coarse_iknots = [ k * spacing for k in range(ncoarse - 1) ] + [grid.ngrid - 1]
+            self.coarse_iknots = np.array([ k * spacing for k in range(ncoarse - 1) ] + [grid.ngrid - 1])
         else:
             self.coarse_fit = None
             self.chisq_mean = np.nan
@@ -100,12 +100,9 @@ class PWLinearFitter:
         opts = self.config.options
         rconf = self.config.regions
         if opts.find_regions:
-            # Perform an initial coarse fit to the smooth trend of the data
-            self.coarse_fit = pwlfit.fit.fitFixedKnotsContinuous(
-                y, ivar, self.grid, iknots=self.coarse_iknots, fit=True)
             # Find regions of the data that deviate significantly from the smooth trend
-            self.chisq_mean, self.chisq_smooth, self.regions = pwlfit.region.findRegions(
-                self.coarse_fit, self.grid, inset=rconf.region_inset,
+            self.coarse_fit, self.chisq_mean, self.chisq_smooth, self.regions = pwlfit.region.findRegions(
+                y, ivar, self.grid, self.coarse_iknots, inset=rconf.region_inset,
                 pad=rconf.region_pad, chisq_cut=rconf.smooth_chisq_cut,
                 scaled_cut=rconf.scaled_cut, clip_nsigma=rconf.clip_nsigma,
                 window_size=rconf.chisq_window_size, poly_order=rconf.chisq_poly_order,
