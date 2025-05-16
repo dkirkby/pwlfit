@@ -37,16 +37,14 @@ class TestRegions(unittest.TestCase):
     def testFindRegions(self):
         xdata, ydata, ivar = read_sample_data('C')
         grid = Grid(xdata, ngrid=2049, transform='log')
-        iknots = np.arange(0, grid.ngrid, 256)
-        fit = fitFixedKnotsContinuous(ydata, ivar, grid, iknots, fit=True)
-        chisq_median, chisq_smooth, regions = findRegions(
-            fit, grid, inset=4, pad=3, chisq_cut=4, window_size=19, poly_order=1)
+        coarse_iknots = np.arange(0, grid.ngrid, 256)
+        coarse_fit, chisq_mean, chisq_smooth, regions = findRegions(
+            ydata, ivar, grid, coarse_iknots,
+            inset=4, pad=3, chisq_cut=4, window_size=19, poly_order=1)
         self.assertEqual(len(regions), 3)
         self.assertEqual(regions[0], Region(lo=353, hi=409))
-        self.assertEqual(regions[1], Region(lo=790, hi=806))
+        self.assertEqual(regions[1], Region(lo=789, hi=807))
         self.assertEqual(regions[2], Region(lo=1573, hi=1595))
-        self.assertTrue(np.allclose(np.median(chisq_smooth), chisq_median))
-        self.assertTrue(np.allclose(chisq_median, 1.066, atol=1e-3, rtol=1e-4))
 
     def testCombineRegions(self):
         n = 10
