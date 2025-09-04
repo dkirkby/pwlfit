@@ -38,13 +38,13 @@ class TestRegions(unittest.TestCase):
         xdata, ydata, ivar = read_sample_data('C')
         grid = Grid(xdata, ngrid=2049, transform='log')
         coarse_iknots = np.arange(0, grid.ngrid, 256)
-        coarse_fit, chisq_mean, chisq_smooth, regions = findRegions(
+        chisq, chisq_mean, chisq_smooth, regions = findRegions(
             ydata, ivar, grid, coarse_iknots,
-            inset=4, pad=3, chisq_cut=4, window_size=19, poly_order=1)
+            inset=4, pad=5, chisq_cut=3, window_size=25, poly_order=1)
         self.assertEqual(len(regions), 3)
-        self.assertEqual(regions[0], Region(lo=353, hi=409))
-        self.assertEqual(regions[1], Region(lo=789, hi=807))
-        self.assertEqual(regions[2], Region(lo=1573, hi=1595))
+        self.assertEqual(regions[0], Region(lo=347, hi=428))
+        self.assertEqual(regions[1], Region(lo=776, hi=814))
+        self.assertEqual(regions[2], Region(lo=1561, hi=1610))
 
     def testCombineRegions(self):
         n = 10
