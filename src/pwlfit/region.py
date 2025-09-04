@@ -64,8 +64,8 @@ def findRegions(y: NDArray[np.float64], ivar: NDArray[np.float64],
 
     Returns
     -------
-    FitResult
-        The result of a coarse fit to the data that captures the overall smooth structure.
+    NDArray[np.float64]
+        Array of (unsmoothed) chisq values.
     float
         The median of the smoothed chisq.
     NDArray[np.float64]
