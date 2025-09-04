@@ -101,7 +101,7 @@ class PWLinearFitter:
         rconf = self.config.regions
         if opts.find_regions:
             # Find regions of the data that deviate significantly from the smooth trend
-            self.coarse_fit, self.chisq_mean, self.chisq_smooth, self.regions = pwlfit.region.findRegions(
+            self.regions_chisq, self.chisq_mean, self.chisq_smooth, self.regions = pwlfit.region.findRegions(
                 y, ivar, self.grid, self.coarse_iknots, inset=rconf.region_inset,
                 pad=rconf.region_pad, chisq_cut=rconf.smooth_chisq_cut,
                 scaled_cut=rconf.scaled_cut, clip_nsigma=rconf.clip_nsigma,

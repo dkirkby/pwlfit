@@ -21,8 +21,9 @@ class Region:
 def findRegions(y: NDArray[np.float64], ivar: NDArray[np.float64],
                 grid: pwlfit.grid.Grid, coarse_iknots: NDArray[np.int64],
                 inset: int = 4, pad: int = 3, chisq_cut: float = 4, scaled_cut: bool = False,
-                clip_nsigma: float = 3, window_size: int = 19, poly_order: int = 1, verbose: bool = False
-                ) -> Tuple[pwlfit.fit.FitResult, float, NDArray[np.float64], List[Region]]:
+                clip_nsigma: float = 3, window_size: int = 19, poly_order: int = 1,
+                max_iter: int = 5, min_coarse_fit_frac: float = 0.5, verbose: bool = False
+                ) -> Tuple[NDArray[np.float64], float, NDArray[np.float64], List[Region]]:
     """
     Find regions of the fit where the chisq is above a threshold that can be analyzed independently.
 
@@ -52,6 +53,12 @@ def findRegions(y: NDArray[np.float64], ivar: NDArray[np.float64],
         The size of the Savitzky-Golay filter window to smooth the chisq. Must be odd.
     poly_order : int
         The order of the Savitzky-Golay filter polynomial to smooth the chisq.
+    max_iter : int
+        The maximum number of iterations to perform when finding regions.
+    min_coarse_fit_frac : float
+        The minimum fraction of grid points to use for the coarse fit. Grid points are
+        iteratively excluded from candidate regions, so that the coarse fit is only
+        performed on smooth regions of the data.
     verbose : bool
         If True, print additional information about the regions found.
 
@@ -73,50 +80,78 @@ def findRegions(y: NDArray[np.float64], ivar: NDArray[np.float64],
     if window_size % 2 == 0 or window_size < 0:
         raise ValueError(f'Invalid window size {window_size} (should be an odd integer > 0)')
 
-    # Perform a coarse fit to the data using the specified knots
-    coarse_fit = pwlfit.fit.fitFixedKnotsContinuous(y, ivar, grid, iknots=coarse_iknots, fit=True)
-
     # Inset must be at least big enough for the padding
     inset = max(inset, pad)
 
-    # Calculate the truncated mean of the chisq
-    clipped, _, _ = scipy.stats.sigmaclip(coarse_fit.chisq, low=clip_nsigma, high=clip_nsigma)
-    chisq_mean = np.mean(clipped)
-    if scaled_cut:
-        # Normalize the cut to the median smooth chisq
-        chisq_cut *= chisq_mean
-
-    # Smooth chisq with Savitzky-Golay filter
-    chisq_smooth = scipy.signal.savgol_filter(coarse_fit.chisq, window_size, poly_order)
-
-    # Build list of consecutive knots where the smooth chisq exceeds the cut,
-    # with padding added
     regions = []
-    currentRegion = None
-    for i in range(inset, grid.ngrid - 1 - inset):
-        k1, k2 = grid.breaks[i], grid.breaks[i + 1]
-        if np.any(chisq_smooth[k1:k2] > chisq_cut):
-            if currentRegion is None:
-                currentRegion = Region(lo=i - pad, hi=i + pad)
-                if verbose:
-                    print(f'Start {currentRegion} at i={i} with smooth chisq ' +
-                          f'{np.max(chisq_smooth[k1:k2]):.3f} > {chisq_cut:.3f}')
-            else:
-                currentRegion.hi = i + pad
-        else:
-            if currentRegion is not None:
-                currentRegion.hi = i + pad
-                regions.append(currentRegion)
-                if verbose:
-                    print(f'End {currentRegion}')
-                currentRegion = None
+    num_iter = 0
+    ivar_mask = np.ones_like(ivar)
+    while num_iter < max_iter:
 
-    # if the final region extends to the end of the grid, record that now
-    if currentRegion is not None:
-        currentRegion.hi = grid.ngrid - 1 - inset
-        regions.append(currentRegion)
+        # Perform a coarse fit to the masked data using the specified knots
+        coarse_fit = pwlfit.fit.fitFixedKnotsContinuous(y, ivar * ivar_mask, grid, iknots=coarse_iknots, fit=False)
+
+        # Calculate the chisq including the masked data points
+        _, _, chisq = pwlfit.fit.evaluateFit(y, ivar, coarse_fit.iknots, coarse_fit.y1knots, coarse_fit.y2knots, grid)
+
+        # Calculate the truncated mean of the chisq
+        #clipped, _, _ = scipy.stats.sigmaclip(chisq, low=clip_nsigma, high=clip_nsigma)
+        #chisq_mean = np.mean(clipped)
+        chisq_mean = np.mean(chisq[ivar_mask > 0])
+        if scaled_cut:
+            # Normalize the cut to the median smooth chisq
+            chisq_cut *= chisq_mean
+
+        # Smooth chisq with Savitzky-Golay filter
+        chisq_smooth = scipy.signal.savgol_filter(chisq, window_size, poly_order)
+
+        # Build list of consecutive knots where the smooth chisq exceeds the cut,
+        # with padding added
+        regions = []
+        currentRegion = None
+        for i in range(inset, grid.ngrid - 1 - inset):
+            k1, k2 = grid.breaks[i], grid.breaks[i + 1]
+            if np.any(chisq_smooth[k1:k2] > chisq_cut):
+                if currentRegion is None:
+                    currentRegion = Region(lo=i - pad, hi=i + pad)
+                    if verbose:
+                        print(f'Start {currentRegion} at i={i} with smooth chisq ' +
+                            f'{np.max(chisq_smooth[k1:k2]):.3f} > {chisq_cut:.3f}')
+                else:
+                    currentRegion.hi = i + pad
+            else:
+                if currentRegion is not None:
+                    currentRegion.hi = i + pad
+                    regions.append(currentRegion)
+                    if verbose:
+                        print(f'End {currentRegion}')
+                    currentRegion = None
+
+        # if the final region extends to the end of the grid, record that now
+        if currentRegion is not None:
+            currentRegion.hi = grid.ngrid - 1 - inset
+            regions.append(currentRegion)
+            if verbose:
+                print(f'End {currentRegion}')
+
         if verbose:
-            print(f'End {currentRegion}')
+            print(f'Found {len(regions)} regions after iter {num_iter+1}/{max_iter} using ' +
+                  f'{ivar_mask.sum()/ivar_mask.size:.1%} of grid points')
+
+        # Update the mask of grid points to exclude from the coarse fit
+        ivar_mask = np.ones_like(ivar)
+        for region in regions:
+            # Exclude the region from the coarse fit
+            k1, k2 = grid.breaks[region.lo], grid.breaks[region.hi + 1]
+            ivar_mask[k1:k2] = 0.0
+
+        if ivar_mask.sum() < min_coarse_fit_frac * ivar_mask.size:
+            # If too few points are left for the coarse fit, stop iterating
+            if verbose:
+                print(f'Exiting after {num_iter+1} iterations, only {ivar_mask.sum()/ivar_mask.size:.1%} of grid pts left')
+            break
+
+        num_iter += 1
 
     # merge overlapping regions
     merged = regions[:1]
@@ -129,7 +164,7 @@ def findRegions(y: NDArray[np.float64], ivar: NDArray[np.float64],
         else:
             merged.append(regions[i])
 
-    return coarse_fit, chisq_mean, chisq_smooth, merged
+    return chisq, chisq_mean, chisq_smooth, merged
 
 
 def insertKnots(i1: int, i2: int, ninsert: int = 0, max_span: int = 0,
